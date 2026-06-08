@@ -203,8 +203,6 @@ st.sidebar.markdown("---")
 page = st.sidebar.radio("Portfolio", [
     "💰 Core (Live)",
     "🅰️ Core A/B (Paper)",
-    "🎯 Satellite v2 (Paper)",
-    "🏛️ Core v2 (Paper)",
     "📊 Summary",
 ])
 if st.sidebar.button("Refresh"):

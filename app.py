@@ -221,7 +221,7 @@ if page == "💰 Core (Live)":
     st.dataframe(df.sort_values('Value', ascending=False).style.format({
         'Entry': '${:.2f}', 'Current': '${:.2f}', 'Value': '${:,.0f}',
         'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'
-    }).applymap(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
+    }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
                 ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
                 subset=['PnL','PnL%']),
         use_container_width=True, hide_index=True)
@@ -286,10 +286,10 @@ elif page == "🅰️ Core A/B (Paper)":
 
         tab1, tab2 = st.tabs(["Core", "Defense"])
         with tab1:
-            st.dataframe(cdf.sort_values('PnL%', ascending=False).style.format(fmt).applymap(style_fn, subset=['PnL','PnL%']),
+            st.dataframe(cdf.sort_values('PnL%', ascending=False).style.format(fmt).map(style_fn, subset=['PnL','PnL%']),
                 use_container_width=True, hide_index=True)
         with tab2:
-            st.dataframe(ddf.sort_values('PnL%', ascending=False).style.format(fmt).applymap(style_fn, subset=['PnL','PnL%']),
+            st.dataframe(ddf.sort_values('PnL%', ascending=False).style.format(fmt).map(style_fn, subset=['PnL','PnL%']),
                 use_container_width=True, hide_index=True)
 
         show_charts(combined)
@@ -335,7 +335,7 @@ elif page == "🎯 Satellite v2 (Paper)":
     st.dataframe(df.style.format({
         'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
         'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'
-    }).applymap(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
+    }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
                 ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
                 subset=['PnL','PnL%']),
         use_container_width=True, hide_index=True)
@@ -381,7 +381,7 @@ elif page == "🏛️ Core v2 (Paper)":
     st.dataframe(df.style.format({
         'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
         'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'
-    }).applymap(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
+    }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
                 ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
                 subset=['PnL','PnL%']),
         use_container_width=True, hide_index=True)
@@ -457,7 +457,7 @@ elif page == "📊 Summary":
     sdf = pd.DataFrame(summaries)
     st.dataframe(sdf.style.format({
         'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.2f}%',
-    }).applymap(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
+    }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
                 ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
                 subset=['PnL','PnL%']),
         use_container_width=True, hide_index=True)

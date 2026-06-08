@@ -95,27 +95,27 @@ DEFENSE_BASKET = [
 # 3. Satellite Config H (paper, 5종목)
 SAT_ENTRY_DATE = "2026-06-05"
 SAT_SEED_USD = 10000
-SAT_BENCH = {'XBI': 128.67, 'IBB': 168.44, 'SPY': 737.55, 'QQQ': 705.06}
+SAT_BENCH = {'XBI': 128.67, 'IBB': 168.49, 'SPY': 737.40, 'QQQ': 705.21}
 SAT_PORTFOLIO = [
-    {'ticker': 'ALMS', 'weight_pct': 20, 'entry': 20.39, 'prob': 0.864, 'smart_money': 'Deep Track + Foresite + Samsara'},
-    {'ticker': 'AVTX', 'weight_pct': 20, 'entry': 13.61, 'prob': 0.596, 'smart_money': 'Point72 + T.Rowe + OrbiMed'},
-    {'ticker': 'ANRO', 'weight_pct': 20, 'entry': 20.03, 'prob': 0.551, 'smart_money': 'Point72 + Sirenia + Vestal Point'},
-    {'ticker': 'IMRX', 'weight_pct': 20, 'entry': 4.48, 'prob': 0.658, 'smart_money': 'Empery + insider cluster'},
-    {'ticker': 'BIOA', 'weight_pct': 20, 'entry': 17.02, 'prob': 0.574, 'smart_money': 'Cormorant + Khosla'},
+    {'ticker': 'ALMS', 'weight_pct': 20, 'entry': 19.06, 'prob': 0.864, 'smart_money': 'Deep Track + Foresite + Samsara'},
+    {'ticker': 'AVTX', 'weight_pct': 20, 'entry': 13.09, 'prob': 0.596, 'smart_money': 'Point72 + T.Rowe + OrbiMed'},
+    {'ticker': 'ANRO', 'weight_pct': 20, 'entry': 18.27, 'prob': 0.551, 'smart_money': 'Point72 + Sirenia + Vestal Point'},
+    {'ticker': 'IMRX', 'weight_pct': 20, 'entry': 4.26, 'prob': 0.658, 'smart_money': 'Empery + insider cluster'},
+    {'ticker': 'BIOA', 'weight_pct': 20, 'entry': 15.68, 'prob': 0.574, 'smart_money': 'Cormorant + Khosla'},
 ]
 
 # 4. Core New (paper, 7종목)
 CNEW_ENTRY_DATE = "2026-06-05"
 CNEW_SEED_USD = 50000
-CNEW_BENCH = {'XBI': 128.67, 'IBB': 168.44, 'SPY': 737.55, 'QQQ': 705.06}
+CNEW_BENCH = {'XBI': 128.67, 'IBB': 168.49, 'SPY': 737.40, 'QQQ': 705.21}
 CNEW_PORTFOLIO = [
-    {'ticker': 'MLYS', 'weight_mult': 1.0, 'entry': 25.05, 'prob': 0.866},
-    {'ticker': 'ALMS', 'weight_mult': 1.0, 'entry': 20.39, 'prob': 0.864},
-    {'ticker': 'INDV', 'weight_mult': 1.0, 'entry': 37.45, 'prob': 0.808},
-    {'ticker': 'LLY',  'weight_mult': 1.0, 'entry': 1125.27, 'prob': 0.562},
-    {'ticker': 'GILD', 'weight_mult': 1.5, 'entry': 129.18, 'prob': 0.759},
-    {'ticker': 'ABBV', 'weight_mult': 1.5, 'entry': 224.94, 'prob': 0.638},
-    {'ticker': 'ARQT', 'weight_mult': 1.0, 'entry': 21.95, 'prob': 0.560},
+    {'ticker': 'MLYS', 'weight_mult': 1.0, 'entry': 23.72, 'prob': 0.866},
+    {'ticker': 'ALMS', 'weight_mult': 1.0, 'entry': 19.06, 'prob': 0.864},
+    {'ticker': 'INDV', 'weight_mult': 1.0, 'entry': 37.63, 'prob': 0.808},
+    {'ticker': 'LLY',  'weight_mult': 1.0, 'entry': 1132.53, 'prob': 0.562},
+    {'ticker': 'GILD', 'weight_mult': 1.5, 'entry': 129.01, 'prob': 0.759},
+    {'ticker': 'ABBV', 'weight_mult': 1.5, 'entry': 227.26, 'prob': 0.638},
+    {'ticker': 'ARQT', 'weight_mult': 1.0, 'entry': 21.22, 'prob': 0.560},
 ]
 
 BENCH_SYMS = ['XBI', 'IBB', 'SPY', 'QQQ']
@@ -273,6 +273,8 @@ st.sidebar.markdown("---")
 page = st.sidebar.radio("Portfolio", [
     "💰 Core (Live)",
     "🅰️ Core A/B (Paper)",
+    "🎯 Satellite v2 (Paper)",
+    "🏛️ Core v2 (Paper)",
     "📊 Summary",
 ])
 if st.sidebar.button("Refresh"):
@@ -400,7 +402,7 @@ elif page == "🅰️ Core A/B (Paper)":
 # ═══ Page: Satellite Config H ═══
 elif page == "🎯 Satellite v2 (Paper)":
     st.title("Satellite v2 -- Paper Tracking")
-    st.markdown(f"Entry: 2026-06-05 Market Close | Seed: $10,000 | Smart money + clinical AI scoring")
+    st.markdown(f"Entry: 2026-06-05 4:00 PM ET | Seed: $10,000 | Smart money + clinical AI scoring")
     st.markdown("Backtest: CAGR 83.8%, Sharpe 1.98, MDD -45.4% (3.1yr)")
     st.markdown("---")
 
@@ -446,7 +448,7 @@ elif page == "🎯 Satellite v2 (Paper)":
 # ═══ Page: Core New ═══
 elif page == "🏛️ Core v2 (Paper)":
     st.title("Core v2 -- Paper Tracking")
-    st.markdown(f"Entry: 2026-06-05 Market Close | Seed: $50,000 | Clinical AI + fundamental filters")
+    st.markdown(f"Entry: 2026-06-05 4:00 PM ET | Seed: $50,000 | Clinical AI + fundamental filters")
     st.markdown("Backtest: CAGR 42.8%, Sharpe 1.23, MDD -32.5% (7.4yr)")
     st.markdown("---")
 

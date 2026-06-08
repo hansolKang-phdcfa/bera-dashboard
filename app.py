@@ -28,7 +28,6 @@ st.markdown("""
     }
     /* General compact style */
     [data-testid="stMetric"] {
-        background-color: #f8f9fa;
         border-radius: 8px;
         padding: 0.5rem 0.8rem;
         border: 1px solid #e9ecef;

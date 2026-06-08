@@ -156,7 +156,39 @@ def get_bench_data(entry_date, entry_prices):
     return result
 
 
-def show_bench(total_pnl_pct, entry_date, bench_prices, label):
+@st.cache_data(ttl=600)
+def get_portfolio_daily(tickers_qty_entry, entry_date):
+    """Calculate daily portfolio return series."""
+    try:
+        tickers = [t[0] for t in tickers_qty_entry]
+        data = yf.download(tickers, start=entry_date, interval='1d', progress=False)
+        if data.empty:
+            return None
+        close = data['Close'] if 'Close' in data.columns else data
+        if isinstance(close, pd.Series):
+            close = close.to_frame(name=tickers[0])
+
+        daily_vals = []
+        for date in close.index:
+            port_val = 0
+            port_cost = 0
+            for tk, qty, ep in tickers_qty_entry:
+                if tk in close.columns:
+                    p = close.loc[date, tk]
+                    if pd.notna(p) and p > 0:
+                        port_val += qty * p
+                        port_cost += qty * ep
+            if port_cost > 0:
+                daily_vals.append({'date': date, 'ret': (port_val / port_cost - 1) * 100})
+
+        if not daily_vals:
+            return None
+        return pd.DataFrame(daily_vals).set_index('date')['ret']
+    except:
+        return None
+
+
+def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio_daily=None):
     st.markdown(f"### vs Benchmarks (since {entry_date})")
     bench = get_bench_data(entry_date, bench_prices)
     cols = st.columns(5)
@@ -167,9 +199,21 @@ def show_bench(total_pnl_pct, entry_date, bench_prices, label):
             cols[i+1].metric(sym, f"{r:+.2f}%", delta=f"{total_pnl_pct - r:+.2f}%p")
     if bench:
         fig = go.Figure()
-        fig.add_hline(y=total_pnl_pct, line_dash="solid", line_color="#1976D2",
-                      annotation_text=f"BERA {total_pnl_pct:+.1f}%", annotation_position="bottom right")
         fig.add_hline(y=0, line_dash="dot", line_color="gray")
+
+        # BERA daily line (bold)
+        if portfolio_daily is not None:
+            fig.add_trace(go.Scatter(
+                x=portfolio_daily.index, y=portfolio_daily.values,
+                name=f"BERA {label} ({total_pnl_pct:+.1f}%)",
+                line=dict(color='#1976D2', width=3.5),
+                mode='lines+markers',
+                marker=dict(size=4),
+            ))
+        else:
+            fig.add_hline(y=total_pnl_pct, line_dash="solid", line_color="#1976D2",
+                          annotation_text=f"BERA {total_pnl_pct:+.1f}%", annotation_position="bottom right")
+
         clr = {'XBI': '#E53935', 'IBB': '#FB8C00', 'SPY': '#43A047', 'QQQ': '#7B1FA2'}
         for sym in BENCH_SYMS:
             if sym in bench:
@@ -250,7 +294,9 @@ if page == "💰 Core (Live)":
 
     show_charts(df)
     st.markdown("---")
-    show_bench(tpp, LIVE_ENTRY_DATE, LIVE_BENCH, "Core Live")
+    live_tqe = [(p['ticker'], p['qty'], p['entry']) for p in LIVE_PORTFOLIO]
+    live_daily = get_portfolio_daily(live_tqe, LIVE_ENTRY_DATE)
+    show_bench(tpp, LIVE_ENTRY_DATE, LIVE_BENCH, "Core Live", portfolio_daily=live_daily)
 
 
 # ═══ Page: Core A/B ═══
@@ -318,7 +364,10 @@ elif page == "🅰️ Core A/B (Paper)":
         st.markdown("---")
         last_tpp = tpp
 
-    show_bench(last_tpp, COREAB_ENTRY_DATE, COREAB_BENCH, "Core A/B")
+    # Use Core A for daily tracking
+    corea_tqe = [(tk, qty, ep) for tk, qty, ep in COREA_CORE + DEFENSE_BASKET]
+    corea_daily = get_portfolio_daily(corea_tqe, COREAB_ENTRY_DATE)
+    show_bench(last_tpp, COREAB_ENTRY_DATE, COREAB_BENCH, "Core A/B", portfolio_daily=corea_daily)
 
 
 # ═══ Page: Satellite Config H ═══

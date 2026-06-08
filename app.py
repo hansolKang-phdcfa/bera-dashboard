@@ -126,17 +126,42 @@ BENCH_SYMS = ['XBI', 'IBB', 'SPY', 'QQQ']
 def get_price(ticker):
     try:
         t = yf.Ticker(ticker)
-        info = t.info
-        pre = info.get('preMarketPrice')
-        post = info.get('postMarketPrice')
-        reg = info.get('currentPrice') or info.get('regularMarketPrice')
-        return float(pre or post or reg or t.fast_info.get('lastPrice', 0))
+        # Try info first
+        try:
+            info = t.info
+            pre = info.get('preMarketPrice')
+            post = info.get('postMarketPrice')
+            reg = info.get('currentPrice') or info.get('regularMarketPrice')
+            p = float(pre or post or reg or 0)
+            if p > 0:
+                return p
+        except:
+            pass
+        # Try fast_info
+        try:
+            p = float(t.fast_info.get('lastPrice', 0))
+            if p > 0:
+                return p
+        except:
+            pass
+        # Fallback: last close from history
+        try:
+            hist = t.history(period='5d')
+            if not hist.empty:
+                return float(hist['Close'].iloc[-1])
+        except:
+            pass
+        return 0.0
     except:
         return 0.0
 
 @st.cache_data(ttl=300)
 def get_prices_batch(tickers):
-    return {tk: get_price(tk) for tk in tickers}
+    result = {}
+    for tk in tickers:
+        p = get_price(tk)
+        result[tk] = p
+    return result
 
 @st.cache_data(ttl=600)
 def get_bench_data(entry_date, entry_prices):

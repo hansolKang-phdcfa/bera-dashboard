@@ -252,6 +252,7 @@ page = st.sidebar.radio("Portfolio", [
 if st.sidebar.button("Refresh"):
     st.cache_data.clear()
 st.sidebar.markdown("---")
+st.sidebar.markdown("[BERA 네프콘](https://contents.premium.naver.com/bera/biostock)")
 st.sidebar.caption("Updated: 2026-06-08")
 
 
@@ -549,4 +550,5 @@ BERA (Biotech Event-driven Research & Alpha) is a quantitative biotech investmen
 
 Paper tracking started June 2026. Results updated in real-time via yfinance.
 """)
+    st.markdown("[BERA 네프콘 (Naver Premium Contents)](https://contents.premium.naver.com/bera/biostock)")
     st.caption("BERA | hansol.kang@bera.ai")

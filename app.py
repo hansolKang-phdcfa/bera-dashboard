@@ -13,6 +13,31 @@ from datetime import datetime, timedelta
 
 st.set_page_config(page_title="BERA Trading", page_icon="🧬", layout="wide")
 
+# Mobile-friendly CSS
+st.markdown("""
+<style>
+    /* Reduce padding on mobile */
+    @media (max-width: 768px) {
+        .block-container { padding: 1rem 0.5rem; }
+        [data-testid="stMetric"] { padding: 0.3rem; }
+        [data-testid="stMetricLabel"] { font-size: 0.75rem; }
+        [data-testid="stMetricValue"] { font-size: 1.1rem; }
+        [data-testid="stMetricDelta"] { font-size: 0.7rem; }
+        .stDataFrame { font-size: 0.7rem; }
+        [data-testid="stSidebar"] { min-width: 180px; max-width: 180px; }
+    }
+    /* General compact style */
+    [data-testid="stMetric"] {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 0.5rem 0.8rem;
+        border: 1px solid #e9ecef;
+    }
+    h1 { font-size: 1.5rem !important; }
+    .stDataFrame { overflow-x: auto; }
+</style>
+""", unsafe_allow_html=True)
+
 # ═══ Portfolio Data ═══
 
 # 1. Core Live (13종목, 한투 모의투자)

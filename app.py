@@ -248,7 +248,8 @@ def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio_daily=N
                     line=dict(color=clr.get(sym, 'gray'), width=2)))
         fig.update_layout(title=f'Cumulative Return since {entry_date}',
                           yaxis_title='Return (%)', height=380,
-                          legend=dict(orientation="h", yanchor="bottom", y=1.02))
+                          legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5, font=dict(size=11)),
+                          margin=dict(t=40, b=80))
         st.plotly_chart(fig, use_container_width=True)
 
 

@@ -251,7 +251,9 @@ def get_portfolio_daily(tickers_qty_entry, entry_date, sl_events=None):
                 if total_orig_cost > 0:
                     daily_vals.append({'date': date, 'ret': (port_val / total_orig_cost - 1) * 100})
             else:
-                # Use new portfolio (redistributed) + subtract realized loss
+                # Use new portfolio (redistributed)
+                # sl_loss is already reflected: redistribution used exit proceeds (< original cost)
+                # so new_port_val is naturally lower. No need to subtract sl_loss again.
                 port_val = 0
                 for tk, qty, ep in new_pf:
                     if tk in close.columns:
@@ -259,7 +261,7 @@ def get_portfolio_daily(tickers_qty_entry, entry_date, sl_events=None):
                         if pd.notna(p) and p > 0:
                             port_val += qty * p
                 if total_orig_cost > 0:
-                    daily_vals.append({'date': date, 'ret': ((port_val - sl_loss) / total_orig_cost - 1) * 100})
+                    daily_vals.append({'date': date, 'ret': (port_val / total_orig_cost - 1) * 100})
 
         if not daily_vals:
             return None

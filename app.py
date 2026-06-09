@@ -189,29 +189,77 @@ def get_bench_data(entry_date, entry_prices):
 
 
 @st.cache_data(ttl=600)
-def get_portfolio_daily(tickers_qty_entry, entry_date):
-    """Calculate daily portfolio return series."""
+def get_portfolio_daily(tickers_qty_entry, entry_date, sl_events=None):
+    """Calculate daily portfolio return series with SL event support.
+
+    sl_events: list of {'date': 'YYYY-MM-DD', 'old_portfolio': [(tk,qty,ep),...],
+                         'new_portfolio': [(tk,qty,ep),...], 'realized_loss': float}
+    Before the SL date, old_portfolio is used. After, new_portfolio.
+    """
     try:
-        tickers = [t[0] for t in tickers_qty_entry]
-        data = yf.download(tickers, start=entry_date, interval='1d', progress=False)
+        # Collect all tickers across all phases
+        all_tickers = set(t[0] for t in tickers_qty_entry)
+        if sl_events:
+            for ev in sl_events:
+                for t in ev.get('old_portfolio', []):
+                    all_tickers.add(t[0])
+        all_tickers = list(all_tickers)
+
+        data = yf.download(all_tickers, start=entry_date, interval='1d', progress=False)
         if data.empty:
             return None
         close = data['Close'] if 'Close' in data.columns else data
         if isinstance(close, pd.Series):
-            close = close.to_frame(name=tickers[0])
+            close = close.to_frame(name=all_tickers[0])
+
+        if not sl_events:
+            # Simple case: no SL events
+            daily_vals = []
+            for date in close.index:
+                port_val = 0; port_cost = 0
+                for tk, qty, ep in tickers_qty_entry:
+                    if tk in close.columns:
+                        p = close.loc[date, tk]
+                        if pd.notna(p) and p > 0:
+                            port_val += qty * p; port_cost += qty * ep
+                if port_cost > 0:
+                    daily_vals.append({'date': date, 'ret': (port_val / port_cost - 1) * 100})
+            if not daily_vals:
+                return None
+            return pd.DataFrame(daily_vals).set_index('date')['ret']
+
+        # With SL events: split into periods
+        ev = sl_events[0]  # support single SL event for now
+        sl_date = pd.Timestamp(ev['date'])
+        old_pf = ev['old_portfolio']
+        new_pf = ev['new_portfolio']
+        sl_loss = ev.get('realized_loss', 0)
+
+        # Total original cost (denominator for return calc)
+        total_orig_cost = sum(qty * ep for _, qty, ep in old_pf)
 
         daily_vals = []
         for date in close.index:
-            port_val = 0
-            port_cost = 0
-            for tk, qty, ep in tickers_qty_entry:
-                if tk in close.columns:
-                    p = close.loc[date, tk]
-                    if pd.notna(p) and p > 0:
-                        port_val += qty * p
-                        port_cost += qty * ep
-            if port_cost > 0:
-                daily_vals.append({'date': date, 'ret': (port_val / port_cost - 1) * 100})
+            if date < sl_date:
+                # Use old portfolio (with MLYS)
+                port_val = 0
+                for tk, qty, ep in old_pf:
+                    if tk in close.columns:
+                        p = close.loc[date, tk]
+                        if pd.notna(p) and p > 0:
+                            port_val += qty * p
+                if total_orig_cost > 0:
+                    daily_vals.append({'date': date, 'ret': (port_val / total_orig_cost - 1) * 100})
+            else:
+                # Use new portfolio (redistributed) + subtract realized loss
+                port_val = 0
+                for tk, qty, ep in new_pf:
+                    if tk in close.columns:
+                        p = close.loc[date, tk]
+                        if pd.notna(p) and p > 0:
+                            port_val += qty * p
+                if total_orig_cost > 0:
+                    daily_vals.append({'date': date, 'ret': ((port_val - sl_loss) / total_orig_cost - 1) * 100})
 
         if not daily_vals:
             return None
@@ -332,8 +380,18 @@ if page == "💰 Core (Live)":
 
     show_charts(df)
     st.markdown("---")
-    live_tqe = [(p['ticker'], p['qty'], p['entry']) for p in LIVE_PORTFOLIO]
-    live_daily = get_portfolio_daily(live_tqe, LIVE_ENTRY_DATE)
+    # Daily return with SL event: MLYS in portfolio until 6/8, then redistributed
+    live_old_pf = [
+        ('CYTK',57,75.148), ('NBIX',25,158.897), ('LQDA',64,56.529),
+        ('UTHR',7,565.10), ('DYN',135,16.847), ('AMRX',164,11.872),
+        ('RCUS',94,23.81), ('XENE',42,53.616), ('CLDX',75,30.283),
+        ('JAZZ',9,229.117), ('TVTX',46,43.084), ('MLYS',86,26.52),
+        ('SYRE',26,71.073),
+    ]
+    live_new_pf = [(p['ticker'], p['qty'], p['entry']) for p in LIVE_PORTFOLIO]
+    live_sl = [{'date': '2026-06-08', 'old_portfolio': live_old_pf,
+                'new_portfolio': live_new_pf, 'realized_loss': LIVE_SL_LOSS}]
+    live_daily = get_portfolio_daily(live_new_pf, LIVE_ENTRY_DATE, sl_events=live_sl)
     show_bench(tpp, LIVE_ENTRY_DATE, LIVE_BENCH, "Core Live", portfolio_daily=live_daily)
 
 
@@ -405,9 +463,20 @@ elif page == "🅰️ Core A/B (Paper)":
         st.markdown("---")
         last_tpp = tpp
 
-    # Use Core A for daily tracking
-    corea_tqe = [(tk, qty, ep) for tk, qty, ep in COREA_CORE + DEFENSE_BASKET]
-    corea_daily = get_portfolio_daily(corea_tqe, COREAB_ENTRY_DATE)
+    # Use Core A for daily tracking (with MLYS SL event on 6/3)
+    corea_old_pf = [
+        ('AMRX',74,12.88), ('LQDA',15,62.01), ('LLY',1,1127.32),
+        ('BBIO',17,67.32), ('SLNO',21,53.01), ('EXEL',21,52.66),
+        ('ALNY',3,302.50), ('TVTX',20,47.34), ('ERAS',92,12.57),
+        ('XENE',21,53.92), ('GPCR',24,40.04), ('GILD',8,135.25),
+        ('VERA',33,34.28), ('CRSP',17,55.92), ('CYTK',15,76.80),
+        ('RYTM',12,92.00), ('IMVT',34,33.33), ('ZLAB',52,18.42),
+        ('CLDX',36,31.75), ('MLYS',37,31.10),
+    ] + list(DEFENSE_BASKET)
+    corea_new_pf = [(tk, qty, ep) for tk, qty, ep in COREA_CORE + DEFENSE_BASKET]
+    corea_sl = [{'date': '2026-06-03', 'old_portfolio': corea_old_pf,
+                 'new_portfolio': corea_new_pf, 'realized_loss': COREAB_SL_LOSS}]
+    corea_daily = get_portfolio_daily(corea_new_pf, COREAB_ENTRY_DATE, sl_events=corea_sl)
     show_bench(last_tpp, COREAB_ENTRY_DATE, COREAB_BENCH, "Core A/B", portfolio_daily=corea_daily)
 
 

@@ -192,17 +192,23 @@ def get_bench_data(entry_date, entry_prices):
 def get_portfolio_daily(tickers_qty_entry, entry_date, sl_events=None):
     """Calculate daily portfolio return series.
 
-    sl_events: list of {'date': 'YYYY-MM-DD', 'ticker': str, 'qty': int,
-                         'entry': float, 'exit_price': float}
-    On/after sl_date, the SL'd ticker's value is frozen at exit_price * qty (cash).
+    sl_events: list of {'date': 'YYYY-MM-DD',
+                         'old_portfolio': [(tk,qty,ep),...]}
+    Before sl_date: use old_portfolio (includes SL'd stock).
+    After sl_date: use tickers_qty_entry (redistributed, SL'd stock removed).
+    Denominator: always old_portfolio cost (= original investment).
     """
     try:
-        all_tickers = list(set(t[0] for t in tickers_qty_entry))
-        # Add SL'd tickers
+        all_tickers = set(t[0] for t in tickers_qty_entry)
+        old_pf = None
+        sl_date = None
         if sl_events:
-            for ev in sl_events:
-                if ev['ticker'] not in all_tickers:
-                    all_tickers.append(ev['ticker'])
+            ev = sl_events[0]
+            old_pf = ev['old_portfolio']
+            sl_date = pd.Timestamp(ev['date'])
+            for t in old_pf:
+                all_tickers.add(t[0])
+        all_tickers = list(all_tickers)
 
         data = yf.download(all_tickers, start=entry_date, interval='1d', progress=False)
         if data.empty:
@@ -211,43 +217,23 @@ def get_portfolio_daily(tickers_qty_entry, entry_date, sl_events=None):
         if isinstance(close, pd.Series):
             close = close.to_frame(name=all_tickers[0])
 
-        # Build full portfolio: current stocks + SL'd stocks
-        full_pf = list(tickers_qty_entry)
-        sl_map = {}
-        if sl_events:
-            for ev in sl_events:
-                sl_map[ev['ticker']] = {
-                    'date': pd.Timestamp(ev['date']),
-                    'qty': ev['qty'],
-                    'entry': ev['entry'],
-                    'exit_price': ev['exit_price'],
-                    'cash': ev['qty'] * ev['exit_price'],
-                }
-                # Add original position to full portfolio
-                full_pf.append((ev['ticker'], ev['qty'], ev['entry']))
-
-        total_cost = sum(qty * ep for _, qty, ep in full_pf)
+        # Denominator: original cost (old portfolio if SL, else current)
+        if old_pf:
+            total_cost = sum(qty * ep for _, qty, ep in old_pf)
+        else:
+            total_cost = sum(qty * ep for _, qty, ep in tickers_qty_entry)
 
         daily_vals = []
         for date in close.index:
+            # Pick which portfolio to use
+            pf = old_pf if (old_pf and sl_date and date < sl_date) else tickers_qty_entry
+
             port_val = 0
-            for tk, qty, ep in full_pf:
-                if tk in sl_map:
-                    sl = sl_map[tk]
-                    if date < sl['date']:
-                        # Before SL: use market price
-                        if tk in close.columns:
-                            p = close.loc[date, tk]
-                            if pd.notna(p) and p > 0:
-                                port_val += qty * p
-                    else:
-                        # After SL: frozen as cash (exit proceeds)
-                        port_val += sl['cash']
-                else:
-                    if tk in close.columns:
-                        p = close.loc[date, tk]
-                        if pd.notna(p) and p > 0:
-                            port_val += qty * p
+            for tk, qty, ep in pf:
+                if tk in close.columns:
+                    p = close.loc[date, tk]
+                    if pd.notna(p) and p > 0:
+                        port_val += qty * p
             if total_cost > 0:
                 daily_vals.append({'date': date, 'ret': (port_val / total_cost - 1) * 100})
 
@@ -351,10 +337,9 @@ if page == "💰 Core (Live)":
                       'PnL%': pnl/cost*100 if cost > 0 else 0})
 
     df = pd.DataFrame(rows)
-    # Portfolio = current 12 stocks + MLYS exit cash
-    mlys_cash = 86 * 22.50  # MLYS frozen as cash after SL
+    # Return = (redistributed portfolio value) / (original 13-stock cost) - 1
     orig_cost = sum(p['qty'] * p['entry'] for p in LIVE_PORTFOLIO) + 86 * 26.52
-    tc = df['Value'].sum() + mlys_cash
+    tc = df['Value'].sum()
     tp = tc - orig_cost
     tpp = tp / orig_cost * 100 if orig_cost > 0 else 0
 
@@ -374,9 +359,15 @@ if page == "💰 Core (Live)":
     show_charts(df)
     st.markdown("---")
     live_tqe = [(p['ticker'], p['qty'], p['entry']) for p in LIVE_PORTFOLIO]
-    live_sl = [{'date': '2026-06-08', 'ticker': 'MLYS', 'qty': 86,
-                'entry': 26.52, 'exit_price': 22.50}]
-    live_daily = get_portfolio_daily(live_tqe, LIVE_ENTRY_DATE, sl_events=live_sl)
+    live_old = [
+        ('CYTK',57,75.148), ('NBIX',25,158.897), ('LQDA',64,56.529),
+        ('UTHR',7,565.10), ('DYN',135,16.847), ('AMRX',164,11.872),
+        ('RCUS',94,23.81), ('XENE',42,53.616), ('CLDX',75,30.283),
+        ('JAZZ',9,229.117), ('TVTX',46,43.084), ('MLYS',86,26.52),
+        ('SYRE',26,71.073),
+    ]
+    live_daily = get_portfolio_daily(live_tqe, LIVE_ENTRY_DATE,
+        sl_events=[{'date': '2026-06-08', 'old_portfolio': live_old}])
     show_bench(tpp, LIVE_ENTRY_DATE, LIVE_BENCH, "Core Live", portfolio_daily=live_daily)
 
 
@@ -417,12 +408,11 @@ elif page == "🅰️ Core A/B (Paper)":
                            'Value': val, 'PnL': pnl, 'PnL%': pnl/cost*100 if cost>0 else 0})
         ddf = pd.DataFrame(drows)
 
-        # Combined: current stocks + MLYS frozen as cash
+        # Return = (redistributed portfolio value) / (original 20-stock + defense cost) - 1
         combined = pd.concat([cdf, ddf], ignore_index=True)
-        mlys_ab_cash = 37 * 25.06  # MLYS exit proceeds (cash)
         new_cost_ab = combined.apply(lambda r: r['Value'] - r['PnL'], axis=1).sum()
         orig_cost_ab = new_cost_ab + 37 * 31.10  # + MLYS original cost
-        tc = combined['Value'].sum() + mlys_ab_cash
+        tc = combined['Value'].sum()
         tp = tc - orig_cost_ab
         tpp = tp / orig_cost_ab * 100 if orig_cost_ab > 0 else 0
         core_pnl = cdf['PnL'].sum() - COREAB_SL_LOSS
@@ -453,9 +443,17 @@ elif page == "🅰️ Core A/B (Paper)":
 
     # Use Core A for daily tracking (MLYS SL on 6/3)
     corea_tqe = [(tk, qty, ep) for tk, qty, ep in COREA_CORE + DEFENSE_BASKET]
-    corea_sl = [{'date': '2026-06-03', 'ticker': 'MLYS', 'qty': 37,
-                 'entry': 31.10, 'exit_price': 25.06}]
-    corea_daily = get_portfolio_daily(corea_tqe, COREAB_ENTRY_DATE, sl_events=corea_sl)
+    corea_old = [
+        ('AMRX',74,12.88), ('LQDA',15,62.01), ('LLY',1,1127.32),
+        ('BBIO',17,67.32), ('SLNO',21,53.01), ('EXEL',21,52.66),
+        ('ALNY',3,302.50), ('TVTX',20,47.34), ('ERAS',92,12.57),
+        ('XENE',21,53.92), ('GPCR',24,40.04), ('GILD',8,135.25),
+        ('VERA',33,34.28), ('CRSP',17,55.92), ('CYTK',15,76.80),
+        ('RYTM',12,92.00), ('IMVT',34,33.33), ('ZLAB',52,18.42),
+        ('CLDX',36,31.75), ('MLYS',37,31.10),
+    ] + list(DEFENSE_BASKET)
+    corea_daily = get_portfolio_daily(corea_tqe, COREAB_ENTRY_DATE,
+        sl_events=[{'date': '2026-06-03', 'old_portfolio': corea_old}])
     show_bench(last_tpp, COREAB_ENTRY_DATE, COREAB_BENCH, "Core A/B", portfolio_daily=corea_daily)
 
 
@@ -559,7 +557,7 @@ elif page == "📊 Summary":
 
     summaries = []
 
-    # Core Live (MLYS SL → cash)
+    # Core Live (redistributed value / original cost)
     tickers = [p['ticker'] for p in LIVE_PORTFOLIO]
     px_live = get_prices_batch(tickers)
     live_new_cost = 0; live_val = 0
@@ -568,14 +566,13 @@ elif page == "📊 Summary":
         if cur <= 0: cur = p['entry']
         live_new_cost += p['qty'] * p['entry']; live_val += p['qty'] * cur
     live_orig_cost = live_new_cost + 86 * 26.52
-    live_total = live_val + 86 * 22.50  # + MLYS cash
-    live_pnl = live_total - live_orig_cost
+    live_pnl = live_val - live_orig_cost
     summaries.append({'Portfolio': 'Core (Live)', 'Entry': LIVE_ENTRY_DATE,
                        'Seed': f"${LIVE_SEED_USD:,}", 'Stocks': len(LIVE_PORTFOLIO),
-                       'Value': live_total, 'PnL': live_pnl, 'PnL%': live_pnl/live_orig_cost*100 if live_orig_cost>0 else 0,
+                       'Value': live_val, 'PnL': live_pnl, 'PnL%': live_pnl/live_orig_cost*100 if live_orig_cost>0 else 0,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(LIVE_ENTRY_DATE)).days})
 
-    # Core A (core + defense, MLYS SL → cash)
+    # Core A (redistributed value / original cost)
     all_ab = list(set([t[0] for t in COREA_CORE + DEFENSE_BASKET]))
     px_ab = get_prices_batch(all_ab)
     ab_new_cost = 0; ab_val = 0
@@ -584,11 +581,10 @@ elif page == "📊 Summary":
         if cur <= 0: cur = ep
         ab_new_cost += qty * ep; ab_val += qty * cur
     ab_orig_cost = ab_new_cost + 37 * 31.10
-    ab_total = ab_val + 37 * 25.06  # + MLYS cash
-    ab_pnl = ab_total - ab_orig_cost
+    ab_pnl = ab_val - ab_orig_cost
     summaries.append({'Portfolio': 'Core A (Paper)', 'Entry': COREAB_ENTRY_DATE,
                        'Seed': f"${COREAB_SEED_USD:,}", 'Stocks': len(COREA_CORE)+len(DEFENSE_BASKET),
-                       'Value': ab_total, 'PnL': ab_pnl, 'PnL%': ab_pnl/ab_orig_cost*100 if ab_orig_cost>0 else 0,
+                       'Value': ab_val, 'PnL': ab_pnl, 'PnL%': ab_pnl/ab_orig_cost*100 if ab_orig_cost>0 else 0,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(COREAB_ENTRY_DATE)).days})
 
     # Satellite v2

@@ -39,27 +39,29 @@ st.markdown("""
 
 # ═══ Portfolio Data ═══
 
-# 1. Core Live (12종목, 한투 모의투자. MLYS 6/8 SL 제외)
+# 1. Core Live (12종목, 한투 모의투자)
+# MLYS SL 6/8: $26.52->$22.50 (-15.2%), 86 shares, loss $345.72
+# Exit proceeds $1,935 -> 12종목 균등재배분 ($161.25/stock at 6/8 prices)
+# Qty/entry updated to reflect redistribution (blended entry)
 LIVE_ENTRY_DATE = "2026-05-18"
 LIVE_SEED_KRW = 50_000_000
 LIVE_SEED_USD = 35000  # approx
 LIVE_BENCH = {'XBI': 129.64, 'IBB': 165.25, 'SPY': 739.57, 'QQQ': 707.26}
 LIVE_PORTFOLIO = [
-    {'ticker': 'CYTK', 'qty': 57, 'entry': 75.148},
+    {'ticker': 'CYTK', 'qty': 59, 'entry': 74.902},
     {'ticker': 'NBIX', 'qty': 25, 'entry': 158.897},
-    {'ticker': 'LQDA', 'qty': 64, 'entry': 56.529},
+    {'ticker': 'LQDA', 'qty': 66, 'entry': 56.752},
     {'ticker': 'UTHR', 'qty': 7, 'entry': 565.10},
-    {'ticker': 'DYN',  'qty': 135, 'entry': 16.847},
-    {'ticker': 'AMRX', 'qty': 164, 'entry': 11.872},
-    {'ticker': 'RCUS', 'qty': 94, 'entry': 23.81},
-    {'ticker': 'XENE', 'qty': 42, 'entry': 53.616},
-    {'ticker': 'CLDX', 'qty': 75, 'entry': 30.283},
+    {'ticker': 'DYN',  'qty': 144, 'entry': 16.845},
+    {'ticker': 'AMRX', 'qty': 175, 'entry': 11.988},
+    {'ticker': 'RCUS', 'qty': 100, 'entry': 23.781},
+    {'ticker': 'XENE', 'qty': 45, 'entry': 53.456},
+    {'ticker': 'CLDX', 'qty': 80, 'entry': 30.175},
     {'ticker': 'JAZZ', 'qty': 9, 'entry': 229.117},
-    {'ticker': 'TVTX', 'qty': 46, 'entry': 43.084},
-    {'ticker': 'SYRE', 'qty': 26, 'entry': 71.073},
+    {'ticker': 'TVTX', 'qty': 49, 'entry': 43.329},
+    {'ticker': 'SYRE', 'qty': 28, 'entry': 71.139},
 ]
-# MLYS SL: 6/8 $26.52->$22.50 (-15.2%), 86 shares. 한투 API 매도 불가, 성과 제외 처리.
-LIVE_SL_LOSS = 86 * (26.52 - 22.50)  # $345.72
+LIVE_SL_LOSS = 345.72  # MLYS realized loss
 
 # 2. Core A/B (paper, 20 core + 10 defense each)
 COREAB_ENTRY_DATE = "2026-05-28"

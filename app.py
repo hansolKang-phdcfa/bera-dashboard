@@ -238,6 +238,11 @@ def get_portfolio_daily(tickers_qty_entry, entry_date, sl_events=None):
         # Total original cost (denominator for return calc)
         total_orig_cost = sum(qty * ep for _, qty, ep in old_pf)
 
+        # Undeployed cash: int() truncation means not all exit proceeds
+        # could buy whole shares. This cash stays in the portfolio.
+        new_cost = sum(qty * ep for _, qty, ep in new_pf)
+        undeployed_cash = total_orig_cost - new_cost - sl_loss
+
         daily_vals = []
         for date in close.index:
             if date < sl_date:
@@ -251,10 +256,8 @@ def get_portfolio_daily(tickers_qty_entry, entry_date, sl_events=None):
                 if total_orig_cost > 0:
                     daily_vals.append({'date': date, 'ret': (port_val / total_orig_cost - 1) * 100})
             else:
-                # Use new portfolio (redistributed)
-                # sl_loss is already reflected: redistribution used exit proceeds (< original cost)
-                # so new_port_val is naturally lower. No need to subtract sl_loss again.
-                port_val = 0
+                # Use new portfolio (redistributed) + undeployed cash
+                port_val = undeployed_cash
                 for tk, qty, ep in new_pf:
                     if tk in close.columns:
                         p = close.loc[date, tk]
@@ -363,9 +366,13 @@ if page == "💰 Core (Live)":
                       'PnL%': pnl/cost*100 if cost > 0 else 0})
 
     df = pd.DataFrame(rows)
-    tc = df['Value'].sum(); tp = df['PnL'].sum() - LIVE_SL_LOSS
-    total_cost = (tc - df['PnL'].sum()) + LIVE_SL_LOSS
-    tpp = tp / total_cost * 100 if total_cost > 0 else 0
+    # Original cost includes MLYS
+    orig_cost = sum(p['qty'] * p['entry'] for p in LIVE_PORTFOLIO) + 86 * 26.52  # + MLYS original
+    new_cost = sum(p['qty'] * p['entry'] for p in LIVE_PORTFOLIO)
+    undeployed_cash = orig_cost - new_cost - LIVE_SL_LOSS
+    tc = df['Value'].sum() + undeployed_cash
+    tp = tc - orig_cost
+    tpp = tp / orig_cost * 100 if orig_cost > 0 else 0
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Portfolio Value", f"${tc:,.0f}")
@@ -434,11 +441,15 @@ elif page == "🅰️ Core A/B (Paper)":
                            'Value': val, 'PnL': pnl, 'PnL%': pnl/cost*100 if cost>0 else 0})
         ddf = pd.DataFrame(drows)
 
-        # Combined (including MLYS realized loss)
+        # Combined (including MLYS realized loss + undeployed cash)
         combined = pd.concat([cdf, ddf], ignore_index=True)
-        tc = combined['Value'].sum(); tp = combined['PnL'].sum() - COREAB_SL_LOSS
-        total_cost = (tc - combined['PnL'].sum()) + COREAB_SL_LOSS
-        tpp = tp / total_cost * 100 if total_cost > 0 else 0
+        new_cost_ab = combined.apply(lambda r: r['Value'] - r['PnL'], axis=1).sum()
+        # Original cost: current cost + MLYS original cost
+        orig_cost_ab = new_cost_ab + 37 * 31.10  # MLYS original
+        undeployed_cash_ab = orig_cost_ab - new_cost_ab - COREAB_SL_LOSS
+        tc = combined['Value'].sum() + undeployed_cash_ab
+        tp = tc - orig_cost_ab
+        tpp = tp / orig_cost_ab * 100 if orig_cost_ab > 0 else 0
         core_pnl = cdf['PnL'].sum() - COREAB_SL_LOSS
         def_pnl = ddf['PnL'].sum()
 
@@ -582,34 +593,38 @@ elif page == "📊 Summary":
 
     summaries = []
 
-    # Core Live (MLYS SL loss included)
+    # Core Live (MLYS SL + undeployed cash)
     tickers = [p['ticker'] for p in LIVE_PORTFOLIO]
     px_live = get_prices_batch(tickers)
-    tc = 0; tv = 0
+    live_new_cost = 0; live_val = 0
     for p in LIVE_PORTFOLIO:
         cur = px_live.get(p['ticker'], p['entry'])
         if cur <= 0: cur = p['entry']
-        tc += p['qty'] * p['entry']; tv += p['qty'] * cur
-    live_pnl = tv - tc - LIVE_SL_LOSS
-    live_cost = tc + LIVE_SL_LOSS
+        live_new_cost += p['qty'] * p['entry']; live_val += p['qty'] * cur
+    live_orig_cost = live_new_cost + 86 * 26.52
+    live_cash = live_orig_cost - live_new_cost - LIVE_SL_LOSS
+    live_total = live_val + live_cash
+    live_pnl = live_total - live_orig_cost
     summaries.append({'Portfolio': 'Core (Live)', 'Entry': LIVE_ENTRY_DATE,
                        'Seed': f"${LIVE_SEED_USD:,}", 'Stocks': len(LIVE_PORTFOLIO),
-                       'Value': tv, 'PnL': live_pnl, 'PnL%': live_pnl/live_cost*100 if live_cost>0 else 0,
+                       'Value': live_total, 'PnL': live_pnl, 'PnL%': live_pnl/live_orig_cost*100 if live_orig_cost>0 else 0,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(LIVE_ENTRY_DATE)).days})
 
-    # Core A (core + defense, MLYS SL loss included)
+    # Core A (core + defense, MLYS SL + undeployed cash)
     all_ab = list(set([t[0] for t in COREA_CORE + DEFENSE_BASKET]))
     px_ab = get_prices_batch(all_ab)
-    tc = 0; tv = 0
+    ab_new_cost = 0; ab_val = 0
     for tk, qty, ep in COREA_CORE + DEFENSE_BASKET:
         cur = px_ab.get(tk, ep)
         if cur <= 0: cur = ep
-        tc += qty * ep; tv += qty * cur
-    ab_pnl = tv - tc - COREAB_SL_LOSS
-    ab_cost = tc + COREAB_SL_LOSS
+        ab_new_cost += qty * ep; ab_val += qty * cur
+    ab_orig_cost = ab_new_cost + 37 * 31.10
+    ab_cash = ab_orig_cost - ab_new_cost - COREAB_SL_LOSS
+    ab_total = ab_val + ab_cash
+    ab_pnl = ab_total - ab_orig_cost
     summaries.append({'Portfolio': 'Core A (Paper)', 'Entry': COREAB_ENTRY_DATE,
                        'Seed': f"${COREAB_SEED_USD:,}", 'Stocks': len(COREA_CORE)+len(DEFENSE_BASKET),
-                       'Value': tv, 'PnL': ab_pnl, 'PnL%': ab_pnl/ab_cost*100 if ab_cost>0 else 0,
+                       'Value': ab_total, 'PnL': ab_pnl, 'PnL%': ab_pnl/ab_orig_cost*100 if ab_orig_cost>0 else 0,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(COREAB_ENTRY_DATE)).days})
 
     # Satellite v2

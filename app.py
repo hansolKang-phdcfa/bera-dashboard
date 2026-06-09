@@ -39,7 +39,7 @@ st.markdown("""
 
 # ═══ Portfolio Data ═══
 
-# 1. Core Live (13종목, 한투 모의투자)
+# 1. Core Live (12종목, 한투 모의투자. MLYS 6/8 SL 제외)
 LIVE_ENTRY_DATE = "2026-05-18"
 LIVE_SEED_KRW = 50_000_000
 LIVE_SEED_USD = 35000  # approx
@@ -56,9 +56,10 @@ LIVE_PORTFOLIO = [
     {'ticker': 'CLDX', 'qty': 75, 'entry': 30.283},
     {'ticker': 'JAZZ', 'qty': 9, 'entry': 229.117},
     {'ticker': 'TVTX', 'qty': 46, 'entry': 43.084},
-    {'ticker': 'MLYS', 'qty': 86, 'entry': 26.52},
     {'ticker': 'SYRE', 'qty': 26, 'entry': 71.073},
 ]
+# MLYS SL: 6/8 $26.52->$22.50 (-15.2%), 86 shares. 한투 API 매도 불가, 성과 제외 처리.
+LIVE_SL_LOSS = 86 * (26.52 - 22.50)  # $345.72
 
 # 2. Core A/B (paper, 20 core + 10 defense each)
 COREAB_ENTRY_DATE = "2026-05-28"
@@ -67,24 +68,28 @@ COREAB_MACRO = 0.44  # Core 44% / Defense 56%
 COREAB_BENCH = {'XBI': 135.59, 'IBB': 171.68, 'SPY': 754.68, 'QQQ': 735.86}
 
 # Core stocks (qty, entry) — A has SLNO/EXEL, B has UTHR/BIIB
+# MLYS SL 6/3: $31.10->$25.06 (-19.4%), 37 shares, loss $223.48
+# Exit proceeds $927.22 -> 19종목 균등 재배분 ($48.80/stock at 6/3 prices)
+# Qty/entry updated to reflect redistribution (blended entry for affected stocks)
 COREA_CORE = [
-    ('AMRX', 74, 12.88), ('LQDA', 15, 62.01), ('LLY', 1, 1127.32),
+    ('AMRX', 77, 12.88), ('LQDA', 15, 62.01), ('LLY', 1, 1127.32),
     ('BBIO', 17, 67.32), ('SLNO', 21, 53.01), ('EXEL', 21, 52.66),
-    ('ALNY', 3, 302.50), ('TVTX', 20, 47.34), ('ERAS', 92, 12.57),
-    ('XENE', 21, 53.92), ('GPCR', 24, 40.04), ('GILD', 8, 135.25),
-    ('VERA', 33, 34.28), ('CRSP', 17, 55.92), ('CYTK', 15, 76.80),
-    ('RYTM', 12, 92.00), ('IMVT', 34, 33.33), ('ZLAB', 52, 18.42),
-    ('CLDX', 36, 31.75), ('MLYS', 37, 31.10),
+    ('ALNY', 3, 302.50), ('TVTX', 21, 47.24), ('ERAS', 95, 12.59),
+    ('XENE', 21, 53.92), ('GPCR', 25, 39.94), ('GILD', 8, 135.25),
+    ('VERA', 34, 34.19), ('CRSP', 17, 55.92), ('CYTK', 15, 76.80),
+    ('RYTM', 12, 92.00), ('IMVT', 35, 33.27), ('ZLAB', 54, 18.33),
+    ('CLDX', 37, 31.70),
 ]
 COREB_CORE = [
-    ('AMRX', 74, 12.88), ('LQDA', 15, 62.01), ('LLY', 1, 1127.32),
+    ('AMRX', 77, 12.88), ('LQDA', 15, 62.01), ('LLY', 1, 1127.32),
     ('BBIO', 17, 67.32), ('UTHR', 2, 568.91), ('BIIB', 6, 196.62),
-    ('ALNY', 3, 302.50), ('TVTX', 20, 47.34), ('ERAS', 92, 12.57),
-    ('XENE', 21, 53.92), ('GPCR', 24, 40.04), ('GILD', 8, 135.25),
-    ('VERA', 33, 34.28), ('CRSP', 17, 55.92), ('CYTK', 15, 76.80),
-    ('RYTM', 12, 92.00), ('IMVT', 34, 33.33), ('ZLAB', 52, 18.42),
-    ('CLDX', 36, 31.75), ('MLYS', 37, 31.10),
+    ('ALNY', 3, 302.50), ('TVTX', 21, 47.24), ('ERAS', 95, 12.59),
+    ('XENE', 21, 53.92), ('GPCR', 25, 39.94), ('GILD', 8, 135.25),
+    ('VERA', 34, 34.19), ('CRSP', 17, 55.92), ('CYTK', 15, 76.80),
+    ('RYTM', 12, 92.00), ('IMVT', 35, 33.27), ('ZLAB', 54, 18.33),
+    ('CLDX', 37, 31.70),
 ]
+COREAB_SL_LOSS = 223.48  # MLYS realized loss
 DEFENSE_BASKET = [
     ('ABBV', 12, 218.49), ('AMGN', 8, 335.34), ('LLY', 2, 1127.32),
     ('REGN', 4, 624.86), ('BMY', 49, 56.53), ('VRTX', 6, 444.79),
@@ -281,13 +286,14 @@ if st.sidebar.button("Refresh"):
     st.cache_data.clear()
 st.sidebar.markdown("---")
 st.sidebar.markdown("[BERA 네프콘](https://contents.premium.naver.com/bera/biostock)")
-st.sidebar.caption("Updated: 2026-06-08")
+st.sidebar.caption("Updated: 2026-06-09")
 
 
 # ═══ Page: Core Live ═══
 if page == "💰 Core (Live)":
     st.title("Core Portfolio -- Live Trading")
-    st.markdown(f"Entry: 2026-05-18 10:30 AM ET | Seed: 50,000,000 KRW | 13 stocks")
+    st.markdown(f"Entry: 2026-05-18 10:30 AM ET | Seed: 50,000,000 KRW | 12 stocks")
+    st.warning("SL: MLYS 6/8 $26.52->$22.50 (-15.2%) | Vol spike + offering | Excluded")
     st.markdown("---")
 
     tickers = [p['ticker'] for p in LIVE_PORTFOLIO]
@@ -305,8 +311,9 @@ if page == "💰 Core (Live)":
                       'PnL%': pnl/cost*100 if cost > 0 else 0})
 
     df = pd.DataFrame(rows)
-    tc = df['Value'].sum(); tp = df['PnL'].sum()
-    tpp = tp / (tc - tp) * 100 if (tc - tp) > 0 else 0
+    tc = df['Value'].sum(); tp = df['PnL'].sum() - LIVE_SL_LOSS
+    total_cost = (tc - df['PnL'].sum()) + LIVE_SL_LOSS
+    tpp = tp / total_cost * 100 if total_cost > 0 else 0
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Portfolio Value", f"${tc:,.0f}")
@@ -337,6 +344,8 @@ elif page == "🅰️ Core A/B (Paper)":
     all_tickers = list(set([t[0] for t in COREA_CORE + COREB_CORE + DEFENSE_BASKET]))
     prices = get_prices_batch(all_tickers)
 
+    st.warning("SL: MLYS 6/3 $31.10->$25.06 (-19.4%) | Vol spike 6.9x + $150M offering | Loss: $223")
+
     last_tpp = 0
     for label, core_stocks in [("Core A", COREA_CORE), ("Core B", COREB_CORE)]:
         st.markdown(f"### {label}")
@@ -363,11 +372,12 @@ elif page == "🅰️ Core A/B (Paper)":
                            'Value': val, 'PnL': pnl, 'PnL%': pnl/cost*100 if cost>0 else 0})
         ddf = pd.DataFrame(drows)
 
-        # Combined
+        # Combined (including MLYS realized loss)
         combined = pd.concat([cdf, ddf], ignore_index=True)
-        tc = combined['Value'].sum(); tp = combined['PnL'].sum()
-        tpp = tp / (tc - tp) * 100 if (tc - tp) > 0 else 0
-        core_pnl = cdf['PnL'].sum()
+        tc = combined['Value'].sum(); tp = combined['PnL'].sum() - COREAB_SL_LOSS
+        total_cost = (tc - combined['PnL'].sum()) + COREAB_SL_LOSS
+        tpp = tp / total_cost * 100 if total_cost > 0 else 0
+        core_pnl = cdf['PnL'].sum() - COREAB_SL_LOSS
         def_pnl = ddf['PnL'].sum()
 
         c1, c2, c3, c4 = st.columns(4)
@@ -499,7 +509,7 @@ elif page == "📊 Summary":
 
     summaries = []
 
-    # Core Live
+    # Core Live (MLYS SL loss included)
     tickers = [p['ticker'] for p in LIVE_PORTFOLIO]
     px_live = get_prices_batch(tickers)
     tc = 0; tv = 0
@@ -507,12 +517,14 @@ elif page == "📊 Summary":
         cur = px_live.get(p['ticker'], p['entry'])
         if cur <= 0: cur = p['entry']
         tc += p['qty'] * p['entry']; tv += p['qty'] * cur
+    live_pnl = tv - tc - LIVE_SL_LOSS
+    live_cost = tc + LIVE_SL_LOSS
     summaries.append({'Portfolio': 'Core (Live)', 'Entry': LIVE_ENTRY_DATE,
                        'Seed': f"${LIVE_SEED_USD:,}", 'Stocks': len(LIVE_PORTFOLIO),
-                       'Value': tv, 'PnL': tv-tc, 'PnL%': (tv-tc)/tc*100 if tc>0 else 0,
+                       'Value': tv, 'PnL': live_pnl, 'PnL%': live_pnl/live_cost*100 if live_cost>0 else 0,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(LIVE_ENTRY_DATE)).days})
 
-    # Core A (core + defense)
+    # Core A (core + defense, MLYS SL loss included)
     all_ab = list(set([t[0] for t in COREA_CORE + DEFENSE_BASKET]))
     px_ab = get_prices_batch(all_ab)
     tc = 0; tv = 0
@@ -520,9 +532,11 @@ elif page == "📊 Summary":
         cur = px_ab.get(tk, ep)
         if cur <= 0: cur = ep
         tc += qty * ep; tv += qty * cur
+    ab_pnl = tv - tc - COREAB_SL_LOSS
+    ab_cost = tc + COREAB_SL_LOSS
     summaries.append({'Portfolio': 'Core A (Paper)', 'Entry': COREAB_ENTRY_DATE,
                        'Seed': f"${COREAB_SEED_USD:,}", 'Stocks': len(COREA_CORE)+len(DEFENSE_BASKET),
-                       'Value': tv, 'PnL': tv-tc, 'PnL%': (tv-tc)/tc*100 if tc>0 else 0,
+                       'Value': tv, 'PnL': ab_pnl, 'PnL%': ab_pnl/ab_cost*100 if ab_cost>0 else 0,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(COREAB_ENTRY_DATE)).days})
 
     # Satellite v2

@@ -62,6 +62,7 @@ LIVE_PORTFOLIO = [
     {'ticker': 'SYRE', 'qty': 28, 'entry': 71.139},
 ]
 LIVE_SL_LOSS = 345.72  # MLYS realized loss
+LIVE_ORIG_COST = 34984.54  # original 13-stock cost (before MLYS SL)
 
 # 2. Core A/B (paper, 20 core + 10 defense each)
 COREAB_ENTRY_DATE = "2026-05-28"
@@ -92,6 +93,7 @@ COREB_CORE = [
     ('CLDX', 37, 31.696),
 ]
 COREAB_SL_LOSS = 223.48  # MLYS realized loss
+COREAB_ORIG_COST = 47808.84  # original 20-core + 10-defense cost (before MLYS SL)
 DEFENSE_BASKET = [
     ('ABBV', 12, 218.49), ('AMGN', 8, 335.34), ('LLY', 2, 1127.32),
     ('REGN', 4, 624.86), ('BMY', 49, 56.53), ('VRTX', 6, 444.79),
@@ -337,11 +339,9 @@ if page == "💰 Core (Live)":
                       'PnL%': pnl/cost*100 if cost > 0 else 0})
 
     df = pd.DataFrame(rows)
-    # Return = (redistributed portfolio value) / (original 13-stock cost) - 1
-    orig_cost = sum(p['qty'] * p['entry'] for p in LIVE_PORTFOLIO) + 86 * 26.52
     tc = df['Value'].sum()
-    tp = tc - orig_cost
-    tpp = tp / orig_cost * 100 if orig_cost > 0 else 0
+    tp = tc - LIVE_ORIG_COST
+    tpp = tp / LIVE_ORIG_COST * 100
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Portfolio Value", f"${tc:,.0f}")
@@ -408,13 +408,10 @@ elif page == "🅰️ Core A/B (Paper)":
                            'Value': val, 'PnL': pnl, 'PnL%': pnl/cost*100 if cost>0 else 0})
         ddf = pd.DataFrame(drows)
 
-        # Return = (redistributed portfolio value) / (original 20-stock + defense cost) - 1
         combined = pd.concat([cdf, ddf], ignore_index=True)
-        new_cost_ab = combined.apply(lambda r: r['Value'] - r['PnL'], axis=1).sum()
-        orig_cost_ab = new_cost_ab + 37 * 31.10  # + MLYS original cost
         tc = combined['Value'].sum()
-        tp = tc - orig_cost_ab
-        tpp = tp / orig_cost_ab * 100 if orig_cost_ab > 0 else 0
+        tp = tc - COREAB_ORIG_COST
+        tpp = tp / COREAB_ORIG_COST * 100
         core_pnl = cdf['PnL'].sum() - COREAB_SL_LOSS
         def_pnl = ddf['PnL'].sum()
 
@@ -557,34 +554,24 @@ elif page == "📊 Summary":
 
     summaries = []
 
-    # Core Live (redistributed value / original cost)
+    # Core Live
     tickers = [p['ticker'] for p in LIVE_PORTFOLIO]
     px_live = get_prices_batch(tickers)
-    live_new_cost = 0; live_val = 0
-    for p in LIVE_PORTFOLIO:
-        cur = px_live.get(p['ticker'], p['entry'])
-        if cur <= 0: cur = p['entry']
-        live_new_cost += p['qty'] * p['entry']; live_val += p['qty'] * cur
-    live_orig_cost = live_new_cost + 86 * 26.52
-    live_pnl = live_val - live_orig_cost
+    live_val = sum(p['qty'] * px_live.get(p['ticker'], p['entry']) for p in LIVE_PORTFOLIO)
+    live_pnl = live_val - LIVE_ORIG_COST
     summaries.append({'Portfolio': 'Core (Live)', 'Entry': LIVE_ENTRY_DATE,
                        'Seed': f"${LIVE_SEED_USD:,}", 'Stocks': len(LIVE_PORTFOLIO),
-                       'Value': live_val, 'PnL': live_pnl, 'PnL%': live_pnl/live_orig_cost*100 if live_orig_cost>0 else 0,
+                       'Value': live_val, 'PnL': live_pnl, 'PnL%': live_pnl/LIVE_ORIG_COST*100,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(LIVE_ENTRY_DATE)).days})
 
-    # Core A (redistributed value / original cost)
+    # Core A
     all_ab = list(set([t[0] for t in COREA_CORE + DEFENSE_BASKET]))
     px_ab = get_prices_batch(all_ab)
-    ab_new_cost = 0; ab_val = 0
-    for tk, qty, ep in COREA_CORE + DEFENSE_BASKET:
-        cur = px_ab.get(tk, ep)
-        if cur <= 0: cur = ep
-        ab_new_cost += qty * ep; ab_val += qty * cur
-    ab_orig_cost = ab_new_cost + 37 * 31.10
-    ab_pnl = ab_val - ab_orig_cost
+    ab_val = sum(qty * px_ab.get(tk, ep) for tk, qty, ep in COREA_CORE + DEFENSE_BASKET)
+    ab_pnl = ab_val - COREAB_ORIG_COST
     summaries.append({'Portfolio': 'Core A (Paper)', 'Entry': COREAB_ENTRY_DATE,
                        'Seed': f"${COREAB_SEED_USD:,}", 'Stocks': len(COREA_CORE)+len(DEFENSE_BASKET),
-                       'Value': ab_val, 'PnL': ab_pnl, 'PnL%': ab_pnl/ab_orig_cost*100 if ab_orig_cost>0 else 0,
+                       'Value': ab_val, 'PnL': ab_pnl, 'PnL%': ab_pnl/COREAB_ORIG_COST*100,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(COREAB_ENTRY_DATE)).days})
 
     # Satellite v2

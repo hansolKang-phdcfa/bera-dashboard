@@ -255,35 +255,6 @@ def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio_daily=N
         if sym in bench:
             r = bench[sym]['ret']
             cols[i+1].metric(sym, f"{r:+.2f}%", delta=f"{total_pnl_pct - r:+.2f}%p")
-    if bench:
-        fig = go.Figure()
-        fig.add_hline(y=0, line_dash="dot", line_color="gray")
-
-        # BERA daily line (bold)
-        if portfolio_daily is not None:
-            fig.add_trace(go.Scatter(
-                x=portfolio_daily.index, y=portfolio_daily.values,
-                name=f"BERA {label} ({total_pnl_pct:+.1f}%)",
-                line=dict(color='#1976D2', width=3.5),
-                mode='lines+markers',
-                marker=dict(size=4),
-            ))
-        else:
-            fig.add_hline(y=total_pnl_pct, line_dash="solid", line_color="#1976D2",
-                          annotation_text=f"BERA {total_pnl_pct:+.1f}%", annotation_position="bottom right")
-
-        clr = {'XBI': '#E53935', 'IBB': '#FB8C00', 'SPY': '#43A047', 'QQQ': '#7B1FA2'}
-        for sym in BENCH_SYMS:
-            if sym in bench:
-                s = bench[sym]['series']
-                fig.add_trace(go.Scatter(x=s.index, y=s.values,
-                    name=f"{sym} ({bench[sym]['ret']:+.1f}%)",
-                    line=dict(color=clr.get(sym, 'gray'), width=2)))
-        fig.update_layout(title=f'Cumulative Return since {entry_date}',
-                          yaxis_title='Return (%)', height=380,
-                          legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5, font=dict(size=11)),
-                          margin=dict(t=40, b=80))
-        st.plotly_chart(fig, use_container_width=True)
 
 
 def show_charts(df):

@@ -180,11 +180,14 @@ def get_bench_data(entry_date, entry_prices):
         if not ep: continue
         try:
             hist = yf.Ticker(sym).history(start=entry_date, interval='1d')
-            if not hist.empty:
-                cur = float(hist['Close'].iloc[-1])
-                ret = (cur - ep) / ep * 100
-                normed = (hist['Close'] / ep - 1) * 100
-                result[sym] = {'current': cur, 'ret': ret, 'series': normed}
+            if hist.empty: continue
+            close = hist['Close'].dropna()
+            if close.empty: continue
+            cur = float(close.iloc[-1])
+            if cur <= 0 or pd.isna(cur): continue
+            ret = (cur - ep) / ep * 100
+            normed = (close / ep - 1) * 100
+            result[sym] = {'current': cur, 'ret': ret, 'series': normed}
         except:
             pass
     return result

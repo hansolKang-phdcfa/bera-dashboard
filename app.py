@@ -507,12 +507,7 @@ if page == "💰 Core (Live)":
     show_cumulative_chart(live_tqe, LIVE_ENTRY_DATE, LIVE_BENCH, "Core Live",
                           portfolio_daily=live_daily)
 
-    # Drawdown + Rolling Sharpe
-    col_dd, col_rs = st.columns(2)
-    with col_dd:
-        show_drawdown_chart(live_daily, "Core Live")
-    with col_rs:
-        show_rolling_sharpe(live_daily, "Core Live", window=10)
+    show_drawdown_chart(live_daily, "Core Live")
 
     st.markdown("---")
     show_bench(tpp, LIVE_ENTRY_DATE, LIVE_BENCH, "Core Live", portfolio_daily=live_daily)

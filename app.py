@@ -648,13 +648,14 @@ trials begin.
     # Trials distribution
     st.markdown("#### Trial Count Distribution")
     fig_trials = px.histogram(
-        scores_df, x='Active Trials', nbins=50,
+        scores_df, x='Active Trials', nbins=80,
         title='Number of Active Trials per Company',
         color_discrete_sequence=['#3498db'],
     )
     fig_trials.update_layout(
-        xaxis_title='Number of Active Trials',
+        xaxis_title='Number of Active Trials (log scale)',
         yaxis_title='Number of Companies',
+        xaxis_type='log',
         height=350,
     )
     st.plotly_chart(fig_trials, use_container_width=True)

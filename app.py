@@ -321,11 +321,22 @@ def get_cumulative_chart_data(tickers_qty_entry, entry_date, bench_prices):
     return result
 
 
-def show_cumulative_chart(tickers_qty_entry, entry_date, bench_prices, label):
-    """Render cumulative return line chart for portfolio vs benchmarks."""
-    data = get_cumulative_chart_data(tickers_qty_entry, entry_date, bench_prices)
-    if not data:
-        return
+def show_cumulative_chart(tickers_qty_entry, entry_date, bench_prices, label,
+                          portfolio_daily=None):
+    """Render cumulative return line chart for portfolio vs benchmarks.
+    If portfolio_daily (pd.Series of cumulative return %) is provided,
+    use it directly instead of computing from tickers_qty_entry.
+    """
+    if portfolio_daily is not None:
+        # Fetch only benchmark data
+        data = get_cumulative_chart_data(tickers_qty_entry, entry_date, bench_prices)
+        if data is None:
+            data = {}
+        data['BERA'] = portfolio_daily
+    else:
+        data = get_cumulative_chart_data(tickers_qty_entry, entry_date, bench_prices)
+        if not data:
+            return
 
     fig = go.Figure()
     colors = {'BERA': '#3498db', 'XBI': '#e74c3c', 'IBB': '#2ecc71', 'SPY': '#f39c12', 'QQQ': '#9b59b6'}
@@ -420,6 +431,12 @@ if page == "💰 Core (Live)":
     ]
     live_daily = get_portfolio_daily(live_tqe, LIVE_ENTRY_DATE,
         sl_events=[{'date': '2026-06-08', 'old_portfolio': live_old}])
+
+    # Cumulative return chart (SL-aware via portfolio_daily)
+    show_cumulative_chart(live_tqe, LIVE_ENTRY_DATE, LIVE_BENCH, "Core Live",
+                          portfolio_daily=live_daily)
+
+    st.markdown("---")
     show_bench(tpp, LIVE_ENTRY_DATE, LIVE_BENCH, "Core Live", portfolio_daily=live_daily)
 
 

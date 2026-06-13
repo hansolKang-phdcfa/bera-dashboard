@@ -372,6 +372,67 @@ def show_cumulative_chart(tickers_qty_entry, entry_date, bench_prices, label,
     st.plotly_chart(fig, use_container_width=True)
 
 
+def show_drawdown_chart(portfolio_daily, label):
+    """Render drawdown chart from cumulative return series."""
+    if portfolio_daily is None or len(portfolio_daily) < 2:
+        return
+    # Convert cumulative return % to wealth index
+    wealth = (1 + portfolio_daily / 100)
+    running_max = wealth.cummax()
+    drawdown = (wealth / running_max - 1) * 100
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=drawdown.index, y=drawdown.values,
+        mode='lines', name='Drawdown',
+        fill='tozeroy', fillcolor='rgba(231,76,60,0.2)',
+        line=dict(color='#e74c3c', width=2),
+    ))
+    fig.add_hline(y=0, line_color="gray", opacity=0.3)
+    mdd = drawdown.min()
+    mdd_date = drawdown.idxmin()
+    fig.add_annotation(x=mdd_date, y=mdd, text=f"MDD: {mdd:.1f}%",
+                       showarrow=True, arrowhead=2, font=dict(color='#e74c3c'))
+    fig.update_layout(
+        title=f"Drawdown — {label}",
+        xaxis_title="Date", yaxis_title="Drawdown (%)",
+        height=300, showlegend=False,
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def show_rolling_sharpe(portfolio_daily, label, window=10):
+    """Render rolling Sharpe ratio chart."""
+    if portfolio_daily is None or len(portfolio_daily) < window + 1:
+        return
+    # Daily returns from cumulative return series
+    wealth = (1 + portfolio_daily / 100)
+    daily_ret = wealth.pct_change().dropna()
+    if len(daily_ret) < window:
+        return
+    rolling_mean = daily_ret.rolling(window).mean()
+    rolling_std = daily_ret.rolling(window).std()
+    # Annualized Sharpe (252 trading days)
+    rolling_sharpe = (rolling_mean / rolling_std) * np.sqrt(252)
+    rolling_sharpe = rolling_sharpe.dropna()
+    if rolling_sharpe.empty:
+        return
+
+    fig = go.Figure()
+    colors = ['#2ecc71' if v >= 0 else '#e74c3c' for v in rolling_sharpe.values]
+    fig.add_trace(go.Bar(
+        x=rolling_sharpe.index, y=rolling_sharpe.values,
+        marker_color=colors, name=f'{window}d Rolling Sharpe',
+    ))
+    fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+    fig.update_layout(
+        title=f"Rolling Sharpe Ratio ({window}-day) — {label}",
+        xaxis_title="Date", yaxis_title="Sharpe (annualized)",
+        height=300, showlegend=False,
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
 # ═══ Sidebar ═══
 st.sidebar.title("BERA")
 st.sidebar.caption("Biotech Event-driven Research & Alpha")
@@ -445,6 +506,13 @@ if page == "💰 Core (Live)":
     # Cumulative return chart (SL-aware via portfolio_daily)
     show_cumulative_chart(live_tqe, LIVE_ENTRY_DATE, LIVE_BENCH, "Core Live",
                           portfolio_daily=live_daily)
+
+    # Drawdown + Rolling Sharpe
+    col_dd, col_rs = st.columns(2)
+    with col_dd:
+        show_drawdown_chart(live_daily, "Core Live")
+    with col_rs:
+        show_rolling_sharpe(live_daily, "Core Live", window=10)
 
     st.markdown("---")
     show_bench(tpp, LIVE_ENTRY_DATE, LIVE_BENCH, "Core Live", portfolio_daily=live_daily)
@@ -542,6 +610,8 @@ elif page == "🅰️ Core A/B (Paper)":
     show_cumulative_chart(corea_tqe, COREAB_ENTRY_DATE, COREAB_BENCH, "Core A/B",
                           portfolio_daily=corea_daily)
 
+    show_drawdown_chart(corea_daily, "Core A/B")
+
     st.markdown("---")
     show_bench(last_tpp, COREAB_ENTRY_DATE, COREAB_BENCH, "Core A/B", portfolio_daily=corea_daily)
 
@@ -597,6 +667,11 @@ elif page == "🎯 Satellite v2 (Paper)":
         sat_tqe.append((p['ticker'], q, p['entry']))
     show_cumulative_chart(sat_tqe, SAT_ENTRY_DATE, SAT_BENCH, "Satellite")
 
+    # Drawdown (uses cumulative chart data)
+    sat_data = get_cumulative_chart_data(sat_tqe, SAT_ENTRY_DATE, SAT_BENCH)
+    if sat_data and 'BERA' in sat_data:
+        show_drawdown_chart(sat_data['BERA'], "Satellite")
+
     st.markdown("---")
     show_bench(tpp, SAT_ENTRY_DATE, SAT_BENCH, "Satellite")
 
@@ -651,6 +726,11 @@ elif page == "🏛️ Core v2 (Paper)":
         q = max(1, int(CNEW_SEED_USD * p['weight_mult'] / total_mult / p['entry']))
         cnew_tqe.append((p['ticker'], q, p['entry']))
     show_cumulative_chart(cnew_tqe, CNEW_ENTRY_DATE, CNEW_BENCH, "Core v2")
+
+    # Drawdown
+    cnew_data = get_cumulative_chart_data(cnew_tqe, CNEW_ENTRY_DATE, CNEW_BENCH)
+    if cnew_data and 'BERA' in cnew_data:
+        show_drawdown_chart(cnew_data['BERA'], "Core v2")
 
     st.markdown("---")
     show_bench(tpp, CNEW_ENTRY_DATE, CNEW_BENCH, "Core v2")

@@ -70,32 +70,32 @@ COREAB_SEED_USD = 50000
 COREAB_MACRO = 0.44  # Core 44% / Defense 56%
 COREAB_BENCH = {'XBI': 135.59, 'IBB': 171.68, 'SPY': 754.68, 'QQQ': 735.86}
 
-# Core stocks (qty, entry) — A has SLNO/EXEL, B has UTHR/BIIB
+# Core stocks (qty, entry) — A has EXEL, B has BIIB (SLNO never purchased/delisted)
 # MLYS SL 6/3: $31.10->$25.70 (-17.4%), 37 shares, loss $199.80
 # Gap-down open at $26.48, SL triggered within first minutes.
 # Slippage due to vol spike 6.9x + $150M offering → realistic fill ~$25.70.
-# Exit proceeds $950.90 -> 19종목 균등 재배분 ($50.05/stock at 6/3 ~10:00AM prices)
-# Paper trading: fractional shares allowed for full reinvestment of proceeds.
+# Exit proceeds $950.90 -> 18종목 균등 재배분 ($52.83/stock at 6/3 ~10:00AM prices)
+# Paper trading: fractional shares for full reinvestment.
 COREA_CORE = [
-    ('AMRX', 77.97, 12.866), ('LQDA', 15.89, 61.668), ('LLY', 1.05, 1125.247),
-    ('BBIO', 17.77, 67.202), ('SLNO', 21.94, 53.010), ('EXEL', 22.01, 52.514),
-    ('ALNY', 3.17, 301.664), ('TVTX', 21.11, 47.218), ('ERAS', 95.82, 12.591),
-    ('XENE', 21.94, 53.896), ('GPCR', 25.35, 39.886), ('GILD', 8.39, 134.923),
-    ('VERA', 34.62, 34.125), ('CRSP', 17.97, 55.693), ('CYTK', 15.71, 76.519),
-    ('RYTM', 12.58, 91.706), ('IMVT', 35.60, 33.236), ('ZLAB', 54.90, 18.357),
-    ('CLDX', 37.71, 31.636),
+    ('AMRX', 78.19, 12.866), ('LQDA', 15.94, 61.650), ('LLY', 1.05, 1125.137),
+    ('BBIO', 17.82, 67.196), ('EXEL', 22.07, 52.506),
+    ('ALNY', 3.18, 301.620), ('TVTX', 21.17, 47.211), ('ERAS', 96.03, 12.592),
+    ('XENE', 21.99, 53.894), ('GPCR', 25.42, 39.878), ('GILD', 8.41, 134.906),
+    ('VERA', 34.71, 34.117), ('CRSP', 18.02, 55.681), ('CYTK', 15.75, 76.504),
+    ('RYTM', 12.62, 91.691), ('IMVT', 35.69, 33.231), ('ZLAB', 55.07, 18.354),
+    ('CLDX', 37.81, 31.630),
 ]
 COREB_CORE = [
-    ('AMRX', 77.97, 12.866), ('LQDA', 15.89, 61.668), ('LLY', 1.05, 1125.247),
-    ('BBIO', 17.77, 67.202), ('UTHR', 2.09, 568.018), ('BIIB', 6.26, 196.332),
-    ('ALNY', 3.17, 301.664), ('TVTX', 21.11, 47.218), ('ERAS', 95.82, 12.591),
-    ('XENE', 21.94, 53.896), ('GPCR', 25.35, 39.886), ('GILD', 8.39, 134.923),
-    ('VERA', 34.62, 34.125), ('CRSP', 17.97, 55.693), ('CYTK', 15.71, 76.519),
-    ('RYTM', 12.58, 91.706), ('IMVT', 35.60, 33.236), ('ZLAB', 54.90, 18.357),
-    ('CLDX', 37.71, 31.636),
+    ('AMRX', 78.19, 12.866), ('LQDA', 15.94, 61.650), ('LLY', 1.05, 1125.137),
+    ('BBIO', 17.82, 67.196), ('BIIB', 6.28, 196.317),
+    ('ALNY', 3.18, 301.620), ('TVTX', 21.17, 47.211), ('ERAS', 96.03, 12.592),
+    ('XENE', 21.99, 53.894), ('GPCR', 25.42, 39.878), ('GILD', 8.41, 134.906),
+    ('VERA', 34.71, 34.117), ('CRSP', 18.02, 55.681), ('CYTK', 15.75, 76.504),
+    ('RYTM', 12.62, 91.691), ('IMVT', 35.69, 33.231), ('ZLAB', 55.07, 18.354),
+    ('CLDX', 37.81, 31.630),
 ]
 COREAB_SL_LOSS = 199.80  # MLYS realized loss
-COREAB_ORIG_COST = 47808.84  # original 20-core + 10-defense cost (before MLYS SL)
+COREAB_ORIG_COST = 46695.63  # original 19-core (no SLNO) + 10-defense cost
 DEFENSE_BASKET = [
     ('ABBV', 12, 218.49), ('AMGN', 8, 335.34), ('LLY', 2, 1127.32),
     ('REGN', 4, 624.86), ('BMY', 49, 56.53), ('VRTX', 6, 444.79),
@@ -528,7 +528,7 @@ elif page == "🅰️ Core A/B (Paper)":
     corea_tqe = [(tk, qty, ep) for tk, qty, ep in COREA_CORE + DEFENSE_BASKET]
     corea_old = [
         ('AMRX',74,12.88), ('LQDA',15,62.01), ('LLY',1,1127.32),
-        ('BBIO',17,67.32), ('SLNO',21,53.01), ('EXEL',21,52.66),
+        ('BBIO',17,67.32), ('EXEL',21,52.66),
         ('ALNY',3,302.50), ('TVTX',20,47.34), ('ERAS',92,12.57),
         ('XENE',21,53.92), ('GPCR',24,40.04), ('GILD',8,135.25),
         ('VERA',33,34.28), ('CRSP',17,55.92), ('CYTK',15,76.80),

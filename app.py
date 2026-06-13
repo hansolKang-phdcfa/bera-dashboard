@@ -241,6 +241,10 @@ def get_portfolio_daily(tickers_qty_entry, entry_date, sl_events=None):
                     p = close.loc[date, tk]
                     if pd.notna(p) and p > 0:
                         port_val += qty * p
+                    else:
+                        port_val += qty * ep  # delisted/missing: use entry price
+                else:
+                    port_val += qty * ep  # ticker not in data: use entry price
             if total_cost > 0:
                 daily_vals.append({'date': date, 'ret': (port_val / total_cost - 1) * 100})
 
@@ -308,6 +312,10 @@ def get_cumulative_chart_data(tickers_qty_entry, entry_date, bench_prices):
                 p = close.loc[date, tk]
                 if pd.notna(p) and p > 0:
                     port_val += qty * p
+                else:
+                    port_val += qty * ep  # delisted/missing: use entry price
+            else:
+                port_val += qty * ep  # ticker not in data: use entry price
         port_rets.append({'date': date, 'ret': (port_val / total_cost - 1) * 100})
     if port_rets:
         s = pd.DataFrame(port_rets).set_index('date')['ret']

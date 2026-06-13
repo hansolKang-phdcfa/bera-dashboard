@@ -71,29 +71,31 @@ COREAB_MACRO = 0.44  # Core 44% / Defense 56%
 COREAB_BENCH = {'XBI': 135.59, 'IBB': 171.68, 'SPY': 754.68, 'QQQ': 735.86}
 
 # Core stocks (qty, entry) — A has SLNO/EXEL, B has UTHR/BIIB
-# MLYS SL 6/3: $31.10->$25.06 (-19.4%), 37 shares, loss $223.48
-# Exit proceeds $927.22 -> 19종목 균등 재배분 ($48.80/stock at 6/3 prices)
+# MLYS SL 6/3: $31.10->$25.70 (-17.4%), 37 shares, loss $199.80
+# Gap-down open at $26.48, SL triggered within first minutes.
+# Slippage due to vol spike 6.9x + $150M offering → realistic fill ~$25.70.
+# Exit proceeds $950.90 -> 19종목 균등 재배분 ($50.05/stock at 6/3 ~10:00AM prices)
 # Qty/entry updated to reflect redistribution (blended entry for affected stocks)
 COREA_CORE = [
-    ('AMRX', 77, 12.880), ('LQDA', 17, 61.266), ('LLY', 1, 1127.32),
-    ('BBIO', 19, 67.126), ('SLNO', 21, 53.01), ('EXEL', 23, 52.568),
-    ('ALNY', 3, 302.50), ('TVTX', 21, 47.238), ('ERAS', 95, 12.589),
-    ('XENE', 23, 53.880), ('GPCR', 25, 39.938), ('GILD', 8, 135.25),
-    ('VERA', 34, 34.191), ('CRSP', 19, 55.516), ('CYTK', 16, 76.419),
-    ('RYTM', 12, 92.00), ('IMVT', 35, 33.268), ('ZLAB', 54, 18.374),
-    ('CLDX', 37, 31.696),
+    ('AMRX', 77, 12.869), ('LQDA', 15, 62.010), ('LLY', 1, 1127.32),
+    ('BBIO', 17, 67.320), ('SLNO', 21, 53.01), ('EXEL', 22, 52.515),
+    ('ALNY', 3, 302.50), ('TVTX', 21, 47.230), ('ERAS', 95, 12.587),
+    ('XENE', 21, 53.920), ('GPCR', 25, 39.924), ('GILD', 8, 135.25),
+    ('VERA', 34, 34.183), ('CRSP', 17, 55.920), ('CYTK', 15, 76.80),
+    ('RYTM', 12, 92.00), ('IMVT', 35, 33.271), ('ZLAB', 54, 18.376),
+    ('CLDX', 37, 31.682),
 ]
 COREB_CORE = [
-    ('AMRX', 77, 12.880), ('LQDA', 17, 61.266), ('LLY', 1, 1127.32),
-    ('BBIO', 19, 67.126), ('UTHR', 2, 568.91), ('BIIB', 6, 196.62),
-    ('ALNY', 3, 302.50), ('TVTX', 21, 47.238), ('ERAS', 95, 12.589),
-    ('XENE', 23, 53.880), ('GPCR', 25, 39.938), ('GILD', 8, 135.25),
-    ('VERA', 34, 34.191), ('CRSP', 19, 55.516), ('CYTK', 16, 76.419),
-    ('RYTM', 12, 92.00), ('IMVT', 35, 33.268), ('ZLAB', 54, 18.374),
-    ('CLDX', 37, 31.696),
+    ('AMRX', 77, 12.869), ('LQDA', 15, 62.010), ('LLY', 1, 1127.32),
+    ('BBIO', 17, 67.320), ('UTHR', 2, 568.91), ('BIIB', 6, 196.62),
+    ('ALNY', 3, 302.50), ('TVTX', 21, 47.230), ('ERAS', 95, 12.587),
+    ('XENE', 21, 53.920), ('GPCR', 25, 39.924), ('GILD', 8, 135.25),
+    ('VERA', 34, 34.183), ('CRSP', 17, 55.920), ('CYTK', 15, 76.80),
+    ('RYTM', 12, 92.00), ('IMVT', 35, 33.271), ('ZLAB', 54, 18.376),
+    ('CLDX', 37, 31.682),
 ]
-COREAB_SL_LOSS = 223.48  # MLYS realized loss
-COREAB_ORIG_COST = 47808.84  # original 20-core + 10-defense cost (before MLYS SL)
+COREAB_SL_LOSS = 199.80  # MLYS realized loss
+COREAB_ORIG_COST = 48143.53  # original 20-core + 10-defense cost (before MLYS SL)
 DEFENSE_BASKET = [
     ('ABBV', 12, 218.49), ('AMGN', 8, 335.34), ('LLY', 2, 1127.32),
     ('REGN', 4, 624.86), ('BMY', 49, 56.53), ('VRTX', 6, 444.79),
@@ -449,7 +451,7 @@ elif page == "🅰️ Core A/B (Paper)":
     all_tickers = list(set([t[0] for t in COREA_CORE + COREB_CORE + DEFENSE_BASKET]))
     prices = get_prices_batch(all_tickers)
 
-    st.warning("SL: MLYS 6/3 $31.10->$25.06 (-19.4%) | Vol spike 6.9x + $150M offering | Loss: $223")
+    st.warning("SL: MLYS 6/3 $31.10->$25.70 (-17.4%) | Gap-down + vol spike 6.9x + $150M offering | Loss: $200")
 
     last_tpp = 0
     for label, core_stocks in [("Core A", COREA_CORE), ("Core B", COREB_CORE)]:
@@ -527,6 +529,12 @@ elif page == "🅰️ Core A/B (Paper)":
     ] + list(DEFENSE_BASKET)
     corea_daily = get_portfolio_daily(corea_tqe, COREAB_ENTRY_DATE,
         sl_events=[{'date': '2026-06-03', 'old_portfolio': corea_old}])
+
+    # Cumulative return chart (SL-aware)
+    show_cumulative_chart(corea_tqe, COREAB_ENTRY_DATE, COREAB_BENCH, "Core A/B",
+                          portfolio_daily=corea_daily)
+
+    st.markdown("---")
     show_bench(last_tpp, COREAB_ENTRY_DATE, COREAB_BENCH, "Core A/B", portfolio_daily=corea_daily)
 
 

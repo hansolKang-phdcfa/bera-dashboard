@@ -647,15 +647,19 @@ trials begin.
 
     # Trials distribution
     st.markdown("#### Trial Count Distribution")
-    fig_trials = px.histogram(
-        scores_df, x='Active Trials', nbins=80,
-        title='Number of Active Trials per Company',
-        color_discrete_sequence=['#3498db'],
-    )
+    trial_bins = scores_df['Active Trials'].value_counts().sort_index()
+    bin_edges = [0, 1, 3, 5, 10, 20, 50, 100, 9999]
+    labels = ['1', '2-3', '4-5', '6-10', '11-20', '21-50', '51-100', '100+']
+    scores_df['Trial Bin'] = pd.cut(scores_df['Active Trials'], bins=bin_edges, labels=labels, right=True)
+    bin_counts = scores_df['Trial Bin'].value_counts().reindex(labels).fillna(0)
+    fig_trials = go.Figure(go.Bar(
+        x=labels, y=bin_counts.values,
+        marker_color='#3498db',
+    ))
     fig_trials.update_layout(
-        xaxis_title='Number of Active Trials (log scale)',
+        title='Number of Active Trials per Company',
+        xaxis_title='Number of Active Trials',
         yaxis_title='Number of Companies',
-        xaxis_type='log',
         height=350,
     )
     st.plotly_chart(fig_trials, use_container_width=True)

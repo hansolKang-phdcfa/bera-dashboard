@@ -13,56 +13,28 @@ from datetime import datetime, timedelta
 
 st.set_page_config(page_title="BERA Trading", page_icon="🧬", layout="wide")
 
-# Mobile-friendly CSS
-st.markdown("""
-<style>
-    /* Reduce padding on mobile */
-    @media (max-width: 768px) {
-        .block-container { padding: 1rem 0.5rem; }
-        [data-testid="stMetric"] { padding: 0.3rem; }
-        [data-testid="stMetricLabel"] { font-size: 0.75rem; }
-        [data-testid="stMetricValue"] { font-size: 1.1rem; }
-        [data-testid="stMetricDelta"] { font-size: 0.7rem; }
-        .stDataFrame { font-size: 0.7rem; }
-        [data-testid="stSidebar"] { min-width: 180px; max-width: 180px; }
-    }
-    /* General compact style */
-    [data-testid="stMetric"] {
-        border-radius: 8px;
-        padding: 0.5rem 0.8rem;
-        border: 1px solid #e9ecef;
-    }
-    h1 { font-size: 1.5rem !important; }
-    .stDataFrame { overflow-x: auto; }
-</style>
-""", unsafe_allow_html=True)
-
 # ═══ Portfolio Data ═══
 
-# 1. Core Live (12종목, 한투 모의투자)
-# MLYS SL 6/8: $26.52->$22.50 (-15.2%), 86 shares, loss $345.72
-# Exit proceeds $1,935 -> 12종목 균등재배분 ($161.25/stock at 6/8 prices)
-# Qty/entry updated to reflect redistribution (blended entry)
+# 1. Core Live (13종목, 한투 모의투자)
 LIVE_ENTRY_DATE = "2026-05-18"
 LIVE_SEED_KRW = 50_000_000
 LIVE_SEED_USD = 35000  # approx
 LIVE_BENCH = {'XBI': 129.64, 'IBB': 165.25, 'SPY': 739.57, 'QQQ': 707.26}
 LIVE_PORTFOLIO = [
-    {'ticker': 'CYTK', 'qty': 59, 'entry': 74.902},
-    {'ticker': 'NBIX', 'qty': 26, 'entry': 159.059},
-    {'ticker': 'LQDA', 'qty': 66, 'entry': 56.752},
+    {'ticker': 'CYTK', 'qty': 57, 'entry': 75.148},
+    {'ticker': 'NBIX', 'qty': 25, 'entry': 158.897},
+    {'ticker': 'LQDA', 'qty': 64, 'entry': 56.529},
     {'ticker': 'UTHR', 'qty': 7, 'entry': 565.10},
-    {'ticker': 'DYN',  'qty': 144, 'entry': 16.845},
-    {'ticker': 'AMRX', 'qty': 175, 'entry': 11.988},
-    {'ticker': 'RCUS', 'qty': 100, 'entry': 23.781},
-    {'ticker': 'XENE', 'qty': 45, 'entry': 53.456},
-    {'ticker': 'CLDX', 'qty': 80, 'entry': 30.175},
-    {'ticker': 'JAZZ', 'qty': 11, 'entry': 229.648},
-    {'ticker': 'TVTX', 'qty': 49, 'entry': 43.329},
-    {'ticker': 'SYRE', 'qty': 28, 'entry': 71.139},
+    {'ticker': 'DYN',  'qty': 135, 'entry': 16.847},
+    {'ticker': 'AMRX', 'qty': 164, 'entry': 11.872},
+    {'ticker': 'RCUS', 'qty': 94, 'entry': 23.81},
+    {'ticker': 'XENE', 'qty': 42, 'entry': 53.616},
+    {'ticker': 'CLDX', 'qty': 75, 'entry': 30.283},
+    {'ticker': 'JAZZ', 'qty': 9, 'entry': 229.117},
+    {'ticker': 'TVTX', 'qty': 46, 'entry': 43.084},
+    {'ticker': 'MLYS', 'qty': 86, 'entry': 26.52},
+    {'ticker': 'SYRE', 'qty': 26, 'entry': 71.073},
 ]
-LIVE_SL_LOSS = 345.72  # MLYS realized loss
-LIVE_ORIG_COST = 34984.54  # original 13-stock cost (before MLYS SL)
 
 # 2. Core A/B (paper, 20 core + 10 defense each)
 COREAB_ENTRY_DATE = "2026-05-28"
@@ -70,32 +42,25 @@ COREAB_SEED_USD = 50000
 COREAB_MACRO = 0.44  # Core 44% / Defense 56%
 COREAB_BENCH = {'XBI': 135.59, 'IBB': 171.68, 'SPY': 754.68, 'QQQ': 735.86}
 
-# Core stocks (qty, entry) — A has EXEL, B has BIIB (SLNO never purchased/delisted)
-# MLYS SL 6/3: $31.10->$25.70 (-17.4%), 37 shares, loss $199.80
-# Gap-down open at $26.48, SL triggered within first minutes.
-# Slippage due to vol spike 6.9x + $150M offering → realistic fill ~$25.70.
-# Exit proceeds $950.90 -> 18종목 균등 재배분 ($52.83/stock at 6/3 ~10:00AM prices)
-# Paper trading: fractional shares for full reinvestment.
+# Core stocks (qty, entry) — A has SLNO/EXEL, B has UTHR/BIIB
 COREA_CORE = [
-    ('AMRX', 78.19, 12.866), ('LQDA', 15.94, 61.650), ('LLY', 1.05, 1125.137),
-    ('BBIO', 17.82, 67.196), ('EXEL', 22.07, 52.506),
-    ('ALNY', 3.18, 301.620), ('TVTX', 21.17, 47.211), ('ERAS', 96.03, 12.592),
-    ('XENE', 21.99, 53.894), ('GPCR', 25.42, 39.878), ('GILD', 8.41, 134.906),
-    ('VERA', 34.71, 34.117), ('CRSP', 18.02, 55.681), ('CYTK', 15.75, 76.504),
-    ('RYTM', 12.62, 91.691), ('IMVT', 35.69, 33.231), ('ZLAB', 55.07, 18.354),
-    ('CLDX', 37.81, 31.630),
+    ('AMRX', 74, 12.88), ('LQDA', 15, 62.01), ('LLY', 1, 1127.32),
+    ('BBIO', 17, 67.32), ('SLNO', 21, 53.01), ('EXEL', 21, 52.66),
+    ('ALNY', 3, 302.50), ('TVTX', 20, 47.34), ('ERAS', 92, 12.57),
+    ('XENE', 21, 53.92), ('GPCR', 24, 40.04), ('GILD', 8, 135.25),
+    ('VERA', 33, 34.28), ('CRSP', 17, 55.92), ('CYTK', 15, 76.80),
+    ('RYTM', 12, 92.00), ('IMVT', 34, 33.33), ('ZLAB', 52, 18.42),
+    ('CLDX', 36, 31.75), ('MLYS', 37, 31.10),
 ]
 COREB_CORE = [
-    ('AMRX', 78.19, 12.866), ('LQDA', 15.94, 61.650), ('LLY', 1.05, 1125.137),
-    ('BBIO', 17.82, 67.196), ('BIIB', 6.28, 196.317),
-    ('ALNY', 3.18, 301.620), ('TVTX', 21.17, 47.211), ('ERAS', 96.03, 12.592),
-    ('XENE', 21.99, 53.894), ('GPCR', 25.42, 39.878), ('GILD', 8.41, 134.906),
-    ('VERA', 34.71, 34.117), ('CRSP', 18.02, 55.681), ('CYTK', 15.75, 76.504),
-    ('RYTM', 12.62, 91.691), ('IMVT', 35.69, 33.231), ('ZLAB', 55.07, 18.354),
-    ('CLDX', 37.81, 31.630),
+    ('AMRX', 74, 12.88), ('LQDA', 15, 62.01), ('LLY', 1, 1127.32),
+    ('BBIO', 17, 67.32), ('UTHR', 2, 568.91), ('BIIB', 6, 196.62),
+    ('ALNY', 3, 302.50), ('TVTX', 20, 47.34), ('ERAS', 92, 12.57),
+    ('XENE', 21, 53.92), ('GPCR', 24, 40.04), ('GILD', 8, 135.25),
+    ('VERA', 33, 34.28), ('CRSP', 17, 55.92), ('CYTK', 15, 76.80),
+    ('RYTM', 12, 92.00), ('IMVT', 34, 33.33), ('ZLAB', 52, 18.42),
+    ('CLDX', 36, 31.75), ('MLYS', 37, 31.10),
 ]
-COREAB_SL_LOSS = 199.80  # MLYS realized loss
-COREAB_ORIG_COST = 46695.63  # original 19-core (no SLNO) + 10-defense cost
 DEFENSE_BASKET = [
     ('ABBV', 12, 218.49), ('AMGN', 8, 335.34), ('LLY', 2, 1127.32),
     ('REGN', 4, 624.86), ('BMY', 49, 56.53), ('VRTX', 6, 444.79),
@@ -137,42 +102,17 @@ BENCH_SYMS = ['XBI', 'IBB', 'SPY', 'QQQ']
 def get_price(ticker):
     try:
         t = yf.Ticker(ticker)
-        # Try info first
-        try:
-            info = t.info
-            pre = info.get('preMarketPrice')
-            post = info.get('postMarketPrice')
-            reg = info.get('currentPrice') or info.get('regularMarketPrice')
-            p = float(pre or post or reg or 0)
-            if p > 0:
-                return p
-        except:
-            pass
-        # Try fast_info
-        try:
-            p = float(t.fast_info.get('lastPrice', 0))
-            if p > 0:
-                return p
-        except:
-            pass
-        # Fallback: last close from history
-        try:
-            hist = t.history(period='5d')
-            if not hist.empty:
-                return float(hist['Close'].iloc[-1])
-        except:
-            pass
-        return 0.0
+        info = t.info
+        pre = info.get('preMarketPrice')
+        post = info.get('postMarketPrice')
+        reg = info.get('currentPrice') or info.get('regularMarketPrice')
+        return float(pre or post or reg or t.fast_info.get('lastPrice', 0))
     except:
         return 0.0
 
 @st.cache_data(ttl=300)
 def get_prices_batch(tickers):
-    result = {}
-    for tk in tickers:
-        p = get_price(tk)
-        result[tk] = p
-    return result
+    return {tk: get_price(tk) for tk in tickers}
 
 @st.cache_data(ttl=600)
 def get_bench_data(entry_date, entry_prices):
@@ -182,80 +122,17 @@ def get_bench_data(entry_date, entry_prices):
         if not ep: continue
         try:
             hist = yf.Ticker(sym).history(start=entry_date, interval='1d')
-            if hist.empty: continue
-            close = hist['Close'].dropna()
-            if close.empty: continue
-            cur = float(close.iloc[-1])
-            if cur <= 0 or pd.isna(cur): continue
-            ret = (cur - ep) / ep * 100
-            normed = (close / ep - 1) * 100
-            result[sym] = {'current': cur, 'ret': ret, 'series': normed}
+            if not hist.empty:
+                cur = float(hist['Close'].iloc[-1])
+                ret = (cur - ep) / ep * 100
+                normed = (hist['Close'] / ep - 1) * 100
+                result[sym] = {'current': cur, 'ret': ret, 'series': normed}
         except:
             pass
     return result
 
 
-@st.cache_data(ttl=600)
-def get_portfolio_daily(tickers_qty_entry, entry_date, sl_events=None):
-    """Calculate daily portfolio return series.
-
-    sl_events: list of {'date': 'YYYY-MM-DD',
-                         'old_portfolio': [(tk,qty,ep),...]}
-    Before sl_date: use old_portfolio (includes SL'd stock).
-    After sl_date: use tickers_qty_entry (redistributed, SL'd stock removed).
-    Denominator: always old_portfolio cost (= original investment).
-    """
-    try:
-        all_tickers = set(t[0] for t in tickers_qty_entry)
-        old_pf = None
-        sl_date = None
-        if sl_events:
-            ev = sl_events[0]
-            old_pf = ev['old_portfolio']
-            sl_date = pd.Timestamp(ev['date'])
-            for t in old_pf:
-                all_tickers.add(t[0])
-        all_tickers = list(all_tickers)
-
-        data = yf.download(all_tickers, start=entry_date, interval='1d', progress=False)
-        if data.empty:
-            return None
-        close = data['Close'] if 'Close' in data.columns else data
-        if isinstance(close, pd.Series):
-            close = close.to_frame(name=all_tickers[0])
-
-        # Denominator: original cost (old portfolio if SL, else current)
-        if old_pf:
-            total_cost = sum(qty * ep for _, qty, ep in old_pf)
-        else:
-            total_cost = sum(qty * ep for _, qty, ep in tickers_qty_entry)
-
-        daily_vals = []
-        for date in close.index:
-            # Pick which portfolio to use
-            pf = old_pf if (old_pf and sl_date and date < sl_date) else tickers_qty_entry
-
-            port_val = 0
-            for tk, qty, ep in pf:
-                if tk in close.columns:
-                    p = close.loc[date, tk]
-                    if pd.notna(p) and p > 0:
-                        port_val += qty * p
-                    else:
-                        port_val += qty * ep  # delisted/missing: use entry price
-                else:
-                    port_val += qty * ep  # ticker not in data: use entry price
-            if total_cost > 0:
-                daily_vals.append({'date': date, 'ret': (port_val / total_cost - 1) * 100})
-
-        if not daily_vals:
-            return None
-        return pd.DataFrame(daily_vals).set_index('date')['ret']
-    except:
-        return None
-
-
-def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio_daily=None):
+def show_bench(total_pnl_pct, entry_date, bench_prices, label):
     st.markdown(f"### vs Benchmarks (since {entry_date})")
     bench = get_bench_data(entry_date, bench_prices)
     cols = st.columns(5)
@@ -264,6 +141,22 @@ def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio_daily=N
         if sym in bench:
             r = bench[sym]['ret']
             cols[i+1].metric(sym, f"{r:+.2f}%", delta=f"{total_pnl_pct - r:+.2f}%p")
+    if bench:
+        fig = go.Figure()
+        fig.add_hline(y=total_pnl_pct, line_dash="solid", line_color="#1976D2",
+                      annotation_text=f"BERA {total_pnl_pct:+.1f}%", annotation_position="bottom right")
+        fig.add_hline(y=0, line_dash="dot", line_color="gray")
+        clr = {'XBI': '#E53935', 'IBB': '#FB8C00', 'SPY': '#43A047', 'QQQ': '#7B1FA2'}
+        for sym in BENCH_SYMS:
+            if sym in bench:
+                s = bench[sym]['series']
+                fig.add_trace(go.Scatter(x=s.index, y=s.values,
+                    name=f"{sym} ({bench[sym]['ret']:+.1f}%)",
+                    line=dict(color=clr.get(sym, 'gray'), width=2)))
+        fig.update_layout(title=f'Cumulative Return since {entry_date}',
+                          yaxis_title='Return (%)', height=380,
+                          legend=dict(orientation="h", yanchor="bottom", y=1.02))
+        st.plotly_chart(fig, use_container_width=True)
 
 
 def show_charts(df):
@@ -279,160 +172,6 @@ def show_charts(df):
         st.plotly_chart(fig, use_container_width=True)
 
 
-@st.cache_data(ttl=600)
-def get_cumulative_chart_data(tickers_qty_entry, entry_date, bench_prices):
-    """Get daily cumulative return series for portfolio and benchmarks.
-    tickers_qty_entry: list of (ticker, qty, entry_price)
-    bench_prices: dict of benchmark entry prices e.g. {'XBI': 128.67, ...}
-    Returns dict of {label: pd.Series of cumulative return %}
-    """
-    all_tickers = [t[0] for t in tickers_qty_entry] + list(bench_prices.keys())
-    try:
-        data = yf.download(all_tickers, start=entry_date, interval='1d', progress=False)
-        if data.empty:
-            return None
-        close = data['Close'] if 'Close' in data.columns else data
-        if isinstance(close, pd.Series):
-            close = close.to_frame(name=all_tickers[0])
-    except:
-        return None
-
-    total_cost = sum(qty * ep for _, qty, ep in tickers_qty_entry)
-    if total_cost <= 0:
-        return None
-
-    result = {}
-
-    # Portfolio cumulative return
-    port_rets = []
-    for date in close.index:
-        port_val = 0
-        for tk, qty, ep in tickers_qty_entry:
-            if tk in close.columns:
-                p = close.loc[date, tk]
-                if pd.notna(p) and p > 0:
-                    port_val += qty * p
-                else:
-                    port_val += qty * ep  # delisted/missing: use entry price
-            else:
-                port_val += qty * ep  # ticker not in data: use entry price
-        port_rets.append({'date': date, 'ret': (port_val / total_cost - 1) * 100})
-    if port_rets:
-        s = pd.DataFrame(port_rets).set_index('date')['ret']
-        result['BERA'] = s
-
-    # Benchmark cumulative returns
-    for sym, ep in bench_prices.items():
-        if sym in close.columns and ep > 0:
-            series = close[sym].dropna()
-            if not series.empty:
-                result[sym] = (series / ep - 1) * 100
-
-    return result
-
-
-def show_cumulative_chart(tickers_qty_entry, entry_date, bench_prices, label,
-                          portfolio_daily=None):
-    """Render cumulative return line chart for portfolio vs benchmarks.
-    If portfolio_daily (pd.Series of cumulative return %) is provided,
-    use it directly instead of computing from tickers_qty_entry.
-    """
-    if portfolio_daily is not None:
-        # Fetch only benchmark data
-        data = get_cumulative_chart_data(tickers_qty_entry, entry_date, bench_prices)
-        if data is None:
-            data = {}
-        data['BERA'] = portfolio_daily
-    else:
-        data = get_cumulative_chart_data(tickers_qty_entry, entry_date, bench_prices)
-        if not data:
-            return
-
-    fig = go.Figure()
-    colors = {'BERA': '#3498db', 'XBI': '#e74c3c', 'IBB': '#2ecc71', 'SPY': '#f39c12', 'QQQ': '#9b59b6'}
-    for name in ['BERA', 'XBI', 'IBB', 'SPY', 'QQQ']:
-        if name not in data:
-            continue
-        s = data[name]
-        fig.add_trace(go.Scatter(
-            x=s.index, y=s.values,
-            mode='lines+markers',
-            name=f"BERA {label}" if name == 'BERA' else name,
-            line=dict(color=colors.get(name, '#777'), width=3 if name == 'BERA' else 1.5),
-            marker=dict(size=4 if name == 'BERA' else 2),
-        ))
-    fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
-    fig.update_layout(
-        title=f"Cumulative Return vs Benchmarks (since {entry_date})",
-        xaxis_title="Date", yaxis_title="Return (%)",
-        hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        height=400,
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-
-def show_drawdown_chart(portfolio_daily, label):
-    """Render drawdown chart from cumulative return series."""
-    if portfolio_daily is None or len(portfolio_daily) < 2:
-        return
-    # Convert cumulative return % to wealth index
-    wealth = (1 + portfolio_daily / 100)
-    running_max = wealth.cummax()
-    drawdown = (wealth / running_max - 1) * 100
-
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=drawdown.index, y=drawdown.values,
-        mode='lines', name='Drawdown',
-        fill='tozeroy', fillcolor='rgba(231,76,60,0.2)',
-        line=dict(color='#e74c3c', width=2),
-    ))
-    fig.add_hline(y=0, line_color="gray", opacity=0.3)
-    mdd = drawdown.min()
-    mdd_date = drawdown.idxmin()
-    fig.add_annotation(x=mdd_date, y=mdd, text=f"MDD: {mdd:.1f}%",
-                       showarrow=True, arrowhead=2, font=dict(color='#e74c3c'))
-    fig.update_layout(
-        title=f"Drawdown — {label}",
-        xaxis_title="Date", yaxis_title="Drawdown (%)",
-        height=300, showlegend=False,
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-
-def show_rolling_sharpe(portfolio_daily, label, window=10):
-    """Render rolling Sharpe ratio chart."""
-    if portfolio_daily is None or len(portfolio_daily) < window + 1:
-        return
-    # Daily returns from cumulative return series
-    wealth = (1 + portfolio_daily / 100)
-    daily_ret = wealth.pct_change().dropna()
-    if len(daily_ret) < window:
-        return
-    rolling_mean = daily_ret.rolling(window).mean()
-    rolling_std = daily_ret.rolling(window).std()
-    # Annualized Sharpe (252 trading days)
-    rolling_sharpe = (rolling_mean / rolling_std) * np.sqrt(252)
-    rolling_sharpe = rolling_sharpe.dropna()
-    if rolling_sharpe.empty:
-        return
-
-    fig = go.Figure()
-    colors = ['#2ecc71' if v >= 0 else '#e74c3c' for v in rolling_sharpe.values]
-    fig.add_trace(go.Bar(
-        x=rolling_sharpe.index, y=rolling_sharpe.values,
-        marker_color=colors, name=f'{window}d Rolling Sharpe',
-    ))
-    fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
-    fig.update_layout(
-        title=f"Rolling Sharpe Ratio ({window}-day) — {label}",
-        xaxis_title="Date", yaxis_title="Sharpe (annualized)",
-        height=300, showlegend=False,
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-
 # ═══ Sidebar ═══
 st.sidebar.title("BERA")
 st.sidebar.caption("Biotech Event-driven Research & Alpha")
@@ -443,19 +182,18 @@ page = st.sidebar.radio("Portfolio", [
     "🎯 Satellite v2 (Paper)",
     "🏛️ Core v2 (Paper)",
     "📊 Summary",
+    "🧬 Quality Score",
 ])
 if st.sidebar.button("Refresh"):
     st.cache_data.clear()
 st.sidebar.markdown("---")
-st.sidebar.markdown("[BERA 네프콘](https://contents.premium.naver.com/bera/biostock)")
-st.sidebar.caption("Updated: 2026-06-09")
+st.sidebar.caption("Updated: 2026-06-08")
 
 
 # ═══ Page: Core Live ═══
 if page == "💰 Core (Live)":
     st.title("Core Portfolio -- Live Trading")
-    st.markdown(f"Entry: 2026-05-18 10:30 AM ET | Seed: 50,000,000 KRW | 12 stocks")
-    st.warning("SL: MLYS 6/8 $26.52->$22.50 (-15.2%) | Vol spike + offering | Excluded")
+    st.markdown(f"Entry: 2026-05-18 10:30 AM ET | Seed: 50,000,000 KRW | 13 stocks")
     st.markdown("---")
 
     tickers = [p['ticker'] for p in LIVE_PORTFOLIO]
@@ -473,9 +211,8 @@ if page == "💰 Core (Live)":
                       'PnL%': pnl/cost*100 if cost > 0 else 0})
 
     df = pd.DataFrame(rows)
-    tc = df['Value'].sum()
-    tp = tc - LIVE_ORIG_COST
-    tpp = tp / LIVE_ORIG_COST * 100
+    tc = df['Value'].sum(); tp = df['PnL'].sum()
+    tpp = tp / (tc - tp) * 100 if (tc - tp) > 0 else 0
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Portfolio Value", f"${tc:,.0f}")
@@ -485,32 +222,14 @@ if page == "💰 Core (Live)":
     st.dataframe(df.sort_values('Value', ascending=False).style.format({
         'Entry': '${:.2f}', 'Current': '${:.2f}', 'Value': '${:,.0f}',
         'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'
-    }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
+    }).applymap(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
                 ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
                 subset=['PnL','PnL%']),
         use_container_width=True, hide_index=True)
 
     show_charts(df)
     st.markdown("---")
-    live_tqe = [(p['ticker'], p['qty'], p['entry']) for p in LIVE_PORTFOLIO]
-    live_old = [
-        ('CYTK',57,75.148), ('NBIX',25,158.897), ('LQDA',64,56.529),
-        ('UTHR',7,565.10), ('DYN',135,16.847), ('AMRX',164,11.872),
-        ('RCUS',94,23.81), ('XENE',42,53.616), ('CLDX',75,30.283),
-        ('JAZZ',9,229.117), ('TVTX',46,43.084), ('MLYS',86,26.52),
-        ('SYRE',26,71.073),
-    ]
-    live_daily = get_portfolio_daily(live_tqe, LIVE_ENTRY_DATE,
-        sl_events=[{'date': '2026-06-08', 'old_portfolio': live_old}])
-
-    # Cumulative return chart (SL-aware via portfolio_daily)
-    show_cumulative_chart(live_tqe, LIVE_ENTRY_DATE, LIVE_BENCH, "Core Live",
-                          portfolio_daily=live_daily)
-
-    show_drawdown_chart(live_daily, "Core Live")
-
-    st.markdown("---")
-    show_bench(tpp, LIVE_ENTRY_DATE, LIVE_BENCH, "Core Live", portfolio_daily=live_daily)
+    show_bench(tpp, LIVE_ENTRY_DATE, LIVE_BENCH, "Core Live")
 
 
 # ═══ Page: Core A/B ═══
@@ -521,8 +240,6 @@ elif page == "🅰️ Core A/B (Paper)":
 
     all_tickers = list(set([t[0] for t in COREA_CORE + COREB_CORE + DEFENSE_BASKET]))
     prices = get_prices_batch(all_tickers)
-
-    st.warning("SL: MLYS 6/3 $31.10->$25.70 (-17.4%) | Gap-down + vol spike 6.9x + $150M offering | Loss: $200")
 
     last_tpp = 0
     for label, core_stocks in [("Core A", COREA_CORE), ("Core B", COREB_CORE)]:
@@ -550,11 +267,11 @@ elif page == "🅰️ Core A/B (Paper)":
                            'Value': val, 'PnL': pnl, 'PnL%': pnl/cost*100 if cost>0 else 0})
         ddf = pd.DataFrame(drows)
 
+        # Combined
         combined = pd.concat([cdf, ddf], ignore_index=True)
-        tc = combined['Value'].sum()
-        tp = tc - COREAB_ORIG_COST
-        tpp = tp / COREAB_ORIG_COST * 100
-        core_pnl = cdf['PnL'].sum() - COREAB_SL_LOSS
+        tc = combined['Value'].sum(); tp = combined['PnL'].sum()
+        tpp = tp / (tc - tp) * 100 if (tc - tp) > 0 else 0
+        core_pnl = cdf['PnL'].sum()
         def_pnl = ddf['PnL'].sum()
 
         c1, c2, c3, c4 = st.columns(4)
@@ -570,45 +287,17 @@ elif page == "🅰️ Core A/B (Paper)":
 
         tab1, tab2 = st.tabs(["Core", "Defense"])
         with tab1:
-            st.dataframe(cdf.sort_values('PnL%', ascending=False).style.format(fmt).map(style_fn, subset=['PnL','PnL%']),
+            st.dataframe(cdf.sort_values('PnL%', ascending=False).style.format(fmt).applymap(style_fn, subset=['PnL','PnL%']),
                 use_container_width=True, hide_index=True)
         with tab2:
-            st.dataframe(ddf.sort_values('PnL%', ascending=False).style.format(fmt).map(style_fn, subset=['PnL','PnL%']),
+            st.dataframe(ddf.sort_values('PnL%', ascending=False).style.format(fmt).applymap(style_fn, subset=['PnL','PnL%']),
                 use_container_width=True, hide_index=True)
 
-        # Aggregate duplicate tickers (GILD, LLY in both Core & Defense) for charts
-        chart_df = combined.groupby('Ticker', as_index=False).agg({
-            'Value': 'sum', 'PnL': 'sum', 'Qty': 'sum',
-            'Entry': 'first', 'Current': 'first',
-        })
-        chart_df['PnL%'] = chart_df.apply(
-            lambda r: r['PnL'] / (r['Value'] - r['PnL']) * 100 if (r['Value'] - r['PnL']) > 0 else 0, axis=1)
-        show_charts(chart_df)
+        show_charts(combined)
         st.markdown("---")
         last_tpp = tpp
 
-    # Use Core A for daily tracking (MLYS SL on 6/3)
-    corea_tqe = [(tk, qty, ep) for tk, qty, ep in COREA_CORE + DEFENSE_BASKET]
-    corea_old = [
-        ('AMRX',74,12.88), ('LQDA',15,62.01), ('LLY',1,1127.32),
-        ('BBIO',17,67.32), ('EXEL',21,52.66),
-        ('ALNY',3,302.50), ('TVTX',20,47.34), ('ERAS',92,12.57),
-        ('XENE',21,53.92), ('GPCR',24,40.04), ('GILD',8,135.25),
-        ('VERA',33,34.28), ('CRSP',17,55.92), ('CYTK',15,76.80),
-        ('RYTM',12,92.00), ('IMVT',34,33.33), ('ZLAB',52,18.42),
-        ('CLDX',36,31.75), ('MLYS',37,31.10),
-    ] + list(DEFENSE_BASKET)
-    corea_daily = get_portfolio_daily(corea_tqe, COREAB_ENTRY_DATE,
-        sl_events=[{'date': '2026-06-03', 'old_portfolio': corea_old}])
-
-    # Cumulative return chart (SL-aware)
-    show_cumulative_chart(corea_tqe, COREAB_ENTRY_DATE, COREAB_BENCH, "Core A/B",
-                          portfolio_daily=corea_daily)
-
-    show_drawdown_chart(corea_daily, "Core A/B")
-
-    st.markdown("---")
-    show_bench(last_tpp, COREAB_ENTRY_DATE, COREAB_BENCH, "Core A/B", portfolio_daily=corea_daily)
+    show_bench(last_tpp, COREAB_ENTRY_DATE, COREAB_BENCH, "Core A/B")
 
 
 # ═══ Page: Satellite Config H ═══
@@ -647,26 +336,12 @@ elif page == "🎯 Satellite v2 (Paper)":
     st.dataframe(df.style.format({
         'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
         'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'
-    }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
+    }).applymap(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
                 ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
                 subset=['PnL','PnL%']),
         use_container_width=True, hide_index=True)
 
     show_charts(df)
-    st.markdown("---")
-
-    # Cumulative return chart
-    sat_tqe = []
-    for p in SAT_PORTFOLIO:
-        q = int(SAT_SEED_USD * p['weight_pct'] / 100 / p['entry'])
-        sat_tqe.append((p['ticker'], q, p['entry']))
-    show_cumulative_chart(sat_tqe, SAT_ENTRY_DATE, SAT_BENCH, "Satellite")
-
-    # Drawdown (uses cumulative chart data)
-    sat_data = get_cumulative_chart_data(sat_tqe, SAT_ENTRY_DATE, SAT_BENCH)
-    if sat_data and 'BERA' in sat_data:
-        show_drawdown_chart(sat_data['BERA'], "Satellite")
-
     st.markdown("---")
     show_bench(tpp, SAT_ENTRY_DATE, SAT_BENCH, "Satellite")
 
@@ -707,26 +382,12 @@ elif page == "🏛️ Core v2 (Paper)":
     st.dataframe(df.style.format({
         'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
         'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'
-    }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
+    }).applymap(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
                 ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
                 subset=['PnL','PnL%']),
         use_container_width=True, hide_index=True)
 
     show_charts(df)
-    st.markdown("---")
-
-    # Cumulative return chart
-    cnew_tqe = []
-    for p in CNEW_PORTFOLIO:
-        q = max(1, int(CNEW_SEED_USD * p['weight_mult'] / total_mult / p['entry']))
-        cnew_tqe.append((p['ticker'], q, p['entry']))
-    show_cumulative_chart(cnew_tqe, CNEW_ENTRY_DATE, CNEW_BENCH, "Core v2")
-
-    # Drawdown
-    cnew_data = get_cumulative_chart_data(cnew_tqe, CNEW_ENTRY_DATE, CNEW_BENCH)
-    if cnew_data and 'BERA' in cnew_data:
-        show_drawdown_chart(cnew_data['BERA'], "Core v2")
-
     st.markdown("---")
     show_bench(tpp, CNEW_ENTRY_DATE, CNEW_BENCH, "Core v2")
 
@@ -742,21 +403,27 @@ elif page == "📊 Summary":
     # Core Live
     tickers = [p['ticker'] for p in LIVE_PORTFOLIO]
     px_live = get_prices_batch(tickers)
-    live_val = sum(p['qty'] * px_live.get(p['ticker'], p['entry']) for p in LIVE_PORTFOLIO)
-    live_pnl = live_val - LIVE_ORIG_COST
+    tc = 0; tv = 0
+    for p in LIVE_PORTFOLIO:
+        cur = px_live.get(p['ticker'], p['entry'])
+        if cur <= 0: cur = p['entry']
+        tc += p['qty'] * p['entry']; tv += p['qty'] * cur
     summaries.append({'Portfolio': 'Core (Live)', 'Entry': LIVE_ENTRY_DATE,
                        'Seed': f"${LIVE_SEED_USD:,}", 'Stocks': len(LIVE_PORTFOLIO),
-                       'Value': live_val, 'PnL': live_pnl, 'PnL%': live_pnl/LIVE_ORIG_COST*100,
+                       'Value': tv, 'PnL': tv-tc, 'PnL%': (tv-tc)/tc*100 if tc>0 else 0,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(LIVE_ENTRY_DATE)).days})
 
-    # Core A
+    # Core A (core + defense)
     all_ab = list(set([t[0] for t in COREA_CORE + DEFENSE_BASKET]))
     px_ab = get_prices_batch(all_ab)
-    ab_val = sum(qty * px_ab.get(tk, ep) for tk, qty, ep in COREA_CORE + DEFENSE_BASKET)
-    ab_pnl = ab_val - COREAB_ORIG_COST
+    tc = 0; tv = 0
+    for tk, qty, ep in COREA_CORE + DEFENSE_BASKET:
+        cur = px_ab.get(tk, ep)
+        if cur <= 0: cur = ep
+        tc += qty * ep; tv += qty * cur
     summaries.append({'Portfolio': 'Core A (Paper)', 'Entry': COREAB_ENTRY_DATE,
                        'Seed': f"${COREAB_SEED_USD:,}", 'Stocks': len(COREA_CORE)+len(DEFENSE_BASKET),
-                       'Value': ab_val, 'PnL': ab_pnl, 'PnL%': ab_pnl/COREAB_ORIG_COST*100,
+                       'Value': tv, 'PnL': tv-tc, 'PnL%': (tv-tc)/tc*100 if tc>0 else 0,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(COREAB_ENTRY_DATE)).days})
 
     # Satellite v2
@@ -791,7 +458,7 @@ elif page == "📊 Summary":
     sdf = pd.DataFrame(summaries)
     st.dataframe(sdf.style.format({
         'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.2f}%',
-    }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
+    }).applymap(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
                 ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
                 subset=['PnL','PnL%']),
         use_container_width=True, hide_index=True)
@@ -808,9 +475,189 @@ BERA (Biotech Event-driven Research & Alpha) is a quantitative biotech investmen
 
 **Core Strategy**: AI-based clinical trial success prediction + fundamental filters for large-cap biotech ($2B+).
 
-**Satellite Strategy**: SEC filing-based smart money tracking (13G, Form4, 13F, Short Interest) + clinical AI risk filter for small/mid-cap event-driven biotech.
+**Satellite Strategy**: Smart money signal tracking + clinical AI risk filter for small/mid-cap event-driven biotech.
 
 Paper tracking started June 2026. Results updated in real-time via yfinance.
 """)
-    st.markdown("[BERA 네프콘 (Naver Premium Contents)](https://contents.premium.naver.com/bera/biostock)")
     st.caption("BERA | hansol.kang@bera.ai")
+
+
+# ═══ Page: Quality Score ═══
+elif page == "🧬 Quality Score":
+    st.title("Quality Score — Clinical AI Pipeline Scoring")
+    st.markdown("""
+BERA's proprietary AI model predicts clinical trial success probability for every active trial
+across 814 US-listed biotech companies. The **Quality Score** is the average predicted success
+probability of a company's currently active clinical trials — a composite measure of pipeline
+strength at any given point in time.
+
+Why does this generate alpha? Clinical trial design documents are publicly available, but the
+market has not yet priced in the systematic success/failure probabilities embedded in them.
+This information asymmetry — new information in the EMH sense — is what BERA exploits.
+""")
+    st.markdown("---")
+
+    # Load data
+    import os
+    SCORES_PATH = os.path.join(os.path.dirname(__file__), 'data', 'trial_survival_ticker_scores.csv')
+    UNIVERSE_PATH = os.path.join(os.path.dirname(__file__), 'data', 'universe.csv')
+
+    try:
+        scores_df = pd.read_csv(SCORES_PATH)
+        scores_df = scores_df.rename(columns={
+            'yahoo_ticker': 'Ticker',
+            'mean_p_completed': 'Quality Score',
+            'min_p_completed': 'Min Score',
+            'n_trials': 'Active Trials',
+            'n_risky': 'Risky Trials',
+            'phase': 'Phase',
+        })
+    except Exception as e:
+        st.error(f"Score data not available: {e}")
+        st.stop()
+
+    try:
+        universe_df = pd.read_csv(UNIVERSE_PATH)
+        universe_total = len(universe_df)
+    except Exception:
+        universe_total = 814
+
+    scored_count = len(scores_df)
+    unscored_count = universe_total - scored_count
+
+    # ── Section 2: Top Ranking ──
+    st.markdown("### Top-Ranked Tickers by Quality Score")
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Target Universe", f"{universe_total}")
+    c2.metric("Currently Scored", f"{scored_count}")
+    c3.metric("Monitoring (no active trials)", f"{unscored_count}")
+
+    top_n = st.slider("Show top N tickers", min_value=10, max_value=100, value=30, step=10)
+    top_df = scores_df.nlargest(top_n, 'Quality Score')[
+        ['Ticker', 'Quality Score', 'Phase', 'Active Trials', 'Risky Trials']
+    ].reset_index(drop=True)
+    top_df.index = top_df.index + 1  # 1-based ranking
+
+    def color_score(val):
+        if isinstance(val, (int, float)):
+            if val >= 0.55:
+                return 'color: #2ecc71; font-weight: bold'
+            elif val < 0.35:
+                return 'color: #e74c3c'
+        return ''
+
+    st.dataframe(
+        top_df.style.format({'Quality Score': '{:.3f}'}).applymap(color_score, subset=['Quality Score']),
+        use_container_width=True, height=min(top_n * 38 + 40, 800),
+    )
+
+    # ── Section 3: Phase Distribution ──
+    st.markdown("---")
+    st.markdown("### Quality Score Distribution by Phase")
+    st.markdown("""
+Earlier phases (P1) tend to have wider variance — fewer trials, less data, more uncertainty.
+Later phases (P2/P3) converge toward the mean as more clinical evidence accumulates.
+""")
+
+    phase_order = ['P1', 'P2', 'P3']
+    phase_df = scores_df[scores_df['Phase'].isin(phase_order)].copy()
+
+    col_box, col_hist = st.columns(2)
+
+    with col_box:
+        fig_box = px.box(
+            phase_df, x='Phase', y='Quality Score',
+            color='Phase',
+            category_orders={'Phase': phase_order},
+            color_discrete_map={'P1': '#3498db', 'P2': '#f39c12', 'P3': '#2ecc71'},
+            title='Distribution by Phase (Box Plot)',
+        )
+        fig_box.update_layout(showlegend=False, yaxis_title='Quality Score', height=400)
+        st.plotly_chart(fig_box, use_container_width=True)
+
+    with col_hist:
+        fig_hist = px.histogram(
+            phase_df, x='Quality Score', color='Phase',
+            category_orders={'Phase': phase_order},
+            color_discrete_map={'P1': '#3498db', 'P2': '#f39c12', 'P3': '#2ecc71'},
+            barmode='overlay', nbins=30, opacity=0.7,
+            title='Distribution by Phase (Histogram)',
+        )
+        fig_hist.update_layout(yaxis_title='Count', height=400)
+        st.plotly_chart(fig_hist, use_container_width=True)
+
+    # Phase stats table
+    phase_stats = phase_df.groupby('Phase').agg(
+        Count=('Quality Score', 'count'),
+        Mean=('Quality Score', 'mean'),
+        Median=('Quality Score', 'median'),
+        Std=('Quality Score', 'std'),
+        Min=('Quality Score', 'min'),
+        Max=('Quality Score', 'max'),
+    ).reindex(phase_order)
+    st.dataframe(
+        phase_stats.style.format({
+            'Mean': '{:.3f}', 'Median': '{:.3f}', 'Std': '{:.3f}',
+            'Min': '{:.3f}', 'Max': '{:.3f}',
+        }),
+        use_container_width=True,
+    )
+
+    # ── Section 4: Target Universe ──
+    st.markdown("---")
+    st.markdown("### Target Universe")
+    st.markdown(f"""
+BERA monitors **{universe_total} US-listed biotech companies**. Of these, **{scored_count}**
+currently have active clinical trials and receive a Quality Score. The remaining **{unscored_count}**
+are tracked but have no active trials at this time — they will be scored automatically when new
+trials begin.
+""")
+
+    col_pie, col_bar = st.columns(2)
+
+    with col_pie:
+        phase_counts = phase_df['Phase'].value_counts().reindex(phase_order).fillna(0)
+        fig_pie = px.pie(
+            values=phase_counts.values,
+            names=phase_counts.index,
+            title=f'Scored Tickers by Phase ({scored_count} total)',
+            color=phase_counts.index,
+            color_discrete_map={'P1': '#3498db', 'P2': '#f39c12', 'P3': '#2ecc71'},
+            hole=0.4,
+        )
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+    with col_bar:
+        coverage = pd.DataFrame({
+            'Status': ['Scored (active trials)', 'Monitoring (no active trials)'],
+            'Count': [scored_count, unscored_count],
+        })
+        fig_cov = px.bar(
+            coverage, x='Status', y='Count',
+            color='Status',
+            color_discrete_map={
+                'Scored (active trials)': '#2ecc71',
+                'Monitoring (no active trials)': '#95a5a6',
+            },
+            title=f'Universe Coverage ({universe_total} total)',
+        )
+        fig_cov.update_layout(showlegend=False, height=400)
+        st.plotly_chart(fig_cov, use_container_width=True)
+
+    # Trials distribution
+    st.markdown("#### Trial Count Distribution")
+    fig_trials = px.histogram(
+        scores_df, x='Active Trials', nbins=50,
+        title='Number of Active Trials per Company',
+        color_discrete_sequence=['#3498db'],
+    )
+    fig_trials.update_layout(
+        xaxis_title='Number of Active Trials',
+        yaxis_title='Number of Companies',
+        height=350,
+    )
+    st.plotly_chart(fig_trials, use_container_width=True)
+
+    st.markdown("---")
+    st.caption("Quality Score = mean predicted success probability of currently active clinical trials per company. Updated quarterly.")

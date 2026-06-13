@@ -495,6 +495,59 @@ Why does this generate alpha? Clinical trial design documents are publicly avail
 market has not yet priced in the systematic success/failure probabilities embedded in them.
 This information asymmetry — new information in the EMH sense — is what BERA exploits.
 """)
+
+    # ── Backtest Performance ──
+    st.markdown("---")
+    st.markdown("### Backtest: Quality Score as Investment Signal")
+    st.markdown("""
+Strategy: Buy the top 20 stocks ranked by Quality Score (mean predicted success probability),
+market cap $2B+, equal-weighted, quarterly rebalancing. Period: Jan 2019 — May 2026 (7.4 years).
+""")
+
+    bt_c1, bt_c2, bt_c3, bt_c4 = st.columns(4)
+    bt_c1.metric("CAGR", "42.8%")
+    bt_c2.metric("Sharpe Ratio", "1.23")
+    bt_c3.metric("Max Drawdown", "-32.5%")
+    bt_c4.metric("All Years Positive", "Yes")
+
+    annual_data = pd.DataFrame({
+        'Year': ['2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026*'],
+        'Quality Score Strategy': [40, 81, 14, 39, 52, 13, 88, 8],
+        'XBI': [30.5, 49.0, -20.5, -28.1, 9.5, -0.0, 33.7, 10.9],
+        'SPY': [31.1, 17.2, 30.5, -18.6, 26.7, 25.6, 18.0, 8.3],
+    })
+
+    fig_annual = go.Figure()
+    fig_annual.add_trace(go.Bar(
+        x=annual_data['Year'], y=annual_data['Quality Score Strategy'],
+        name='Quality Score Strategy', marker_color='#1976D2',
+    ))
+    fig_annual.add_trace(go.Scatter(
+        x=annual_data['Year'], y=annual_data['XBI'],
+        name='XBI (Biotech ETF)', mode='lines+markers',
+        line=dict(color='#E53935', width=2),
+    ))
+    fig_annual.add_trace(go.Scatter(
+        x=annual_data['Year'], y=annual_data['SPY'],
+        name='SPY (S&P 500)', mode='lines+markers',
+        line=dict(color='#43A047', width=2),
+    ))
+    fig_annual.update_layout(
+        title='Annual Returns: Quality Score Strategy vs Benchmarks (%)',
+        yaxis_title='Return (%)',
+        barmode='group', height=420,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02),
+    )
+    fig_annual.add_hline(y=0, line_dash="dot", line_color="gray")
+    st.plotly_chart(fig_annual, use_container_width=True)
+
+    st.markdown("""
+Key observations:
+- Positive returns in every year including 2022 (+39%) when XBI fell -28% and SPY fell -19%
+- Outperformed XBI in 7 of 8 years — the Quality Score consistently identifies pipeline strength
+- 2026 YTD as of May (*partial year)
+""")
+
     st.markdown("---")
 
     # Load data

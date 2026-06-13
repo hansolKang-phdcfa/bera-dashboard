@@ -273,6 +273,84 @@ def show_charts(df):
         st.plotly_chart(fig, use_container_width=True)
 
 
+@st.cache_data(ttl=600)
+def get_cumulative_chart_data(tickers_qty_entry, entry_date, bench_prices):
+    """Get daily cumulative return series for portfolio and benchmarks.
+    tickers_qty_entry: list of (ticker, qty, entry_price)
+    bench_prices: dict of benchmark entry prices e.g. {'XBI': 128.67, ...}
+    Returns dict of {label: pd.Series of cumulative return %}
+    """
+    all_tickers = [t[0] for t in tickers_qty_entry] + list(bench_prices.keys())
+    try:
+        data = yf.download(all_tickers, start=entry_date, interval='1d', progress=False)
+        if data.empty:
+            return None
+        close = data['Close'] if 'Close' in data.columns else data
+        if isinstance(close, pd.Series):
+            close = close.to_frame(name=all_tickers[0])
+    except:
+        return None
+
+    total_cost = sum(qty * ep for _, qty, ep in tickers_qty_entry)
+    if total_cost <= 0:
+        return None
+
+    result = {}
+
+    # Portfolio cumulative return
+    port_rets = []
+    for date in close.index:
+        port_val = 0
+        for tk, qty, ep in tickers_qty_entry:
+            if tk in close.columns:
+                p = close.loc[date, tk]
+                if pd.notna(p) and p > 0:
+                    port_val += qty * p
+        port_rets.append({'date': date, 'ret': (port_val / total_cost - 1) * 100})
+    if port_rets:
+        s = pd.DataFrame(port_rets).set_index('date')['ret']
+        result['BERA'] = s
+
+    # Benchmark cumulative returns
+    for sym, ep in bench_prices.items():
+        if sym in close.columns and ep > 0:
+            series = close[sym].dropna()
+            if not series.empty:
+                result[sym] = (series / ep - 1) * 100
+
+    return result
+
+
+def show_cumulative_chart(tickers_qty_entry, entry_date, bench_prices, label):
+    """Render cumulative return line chart for portfolio vs benchmarks."""
+    data = get_cumulative_chart_data(tickers_qty_entry, entry_date, bench_prices)
+    if not data:
+        return
+
+    fig = go.Figure()
+    colors = {'BERA': '#3498db', 'XBI': '#e74c3c', 'IBB': '#2ecc71', 'SPY': '#f39c12', 'QQQ': '#9b59b6'}
+    for name in ['BERA', 'XBI', 'IBB', 'SPY', 'QQQ']:
+        if name not in data:
+            continue
+        s = data[name]
+        fig.add_trace(go.Scatter(
+            x=s.index, y=s.values,
+            mode='lines+markers',
+            name=f"BERA {label}" if name == 'BERA' else name,
+            line=dict(color=colors.get(name, '#777'), width=3 if name == 'BERA' else 1.5),
+            marker=dict(size=4 if name == 'BERA' else 2),
+        ))
+    fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+    fig.update_layout(
+        title=f"Cumulative Return vs Benchmarks (since {entry_date})",
+        xaxis_title="Date", yaxis_title="Return (%)",
+        hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        height=400,
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
 # ═══ Sidebar ═══
 st.sidebar.title("BERA")
 st.sidebar.caption("Biotech Event-driven Research & Alpha")
@@ -471,6 +549,15 @@ elif page == "🎯 Satellite v2 (Paper)":
 
     show_charts(df)
     st.markdown("---")
+
+    # Cumulative return chart
+    sat_tqe = []
+    for p in SAT_PORTFOLIO:
+        q = int(SAT_SEED_USD * p['weight_pct'] / 100 / p['entry'])
+        sat_tqe.append((p['ticker'], q, p['entry']))
+    show_cumulative_chart(sat_tqe, SAT_ENTRY_DATE, SAT_BENCH, "Satellite")
+
+    st.markdown("---")
     show_bench(tpp, SAT_ENTRY_DATE, SAT_BENCH, "Satellite")
 
 
@@ -516,6 +603,15 @@ elif page == "🏛️ Core v2 (Paper)":
         use_container_width=True, hide_index=True)
 
     show_charts(df)
+    st.markdown("---")
+
+    # Cumulative return chart
+    cnew_tqe = []
+    for p in CNEW_PORTFOLIO:
+        q = max(1, int(CNEW_SEED_USD * p['weight_mult'] / total_mult / p['entry']))
+        cnew_tqe.append((p['ticker'], q, p['entry']))
+    show_cumulative_chart(cnew_tqe, CNEW_ENTRY_DATE, CNEW_BENCH, "Core v2")
+
     st.markdown("---")
     show_bench(tpp, CNEW_ENTRY_DATE, CNEW_BENCH, "Core v2")
 

@@ -132,7 +132,42 @@ def get_bench_data(entry_date, entry_prices):
     return result
 
 
-def show_bench(total_pnl_pct, entry_date, bench_prices, label):
+@st.cache_data(ttl=600)
+def get_portfolio_daily(tickers_qty_entry, entry_date):
+    """Calculate daily portfolio cumulative return series."""
+    try:
+        tickers_qty_entry = list(tickers_qty_entry)
+        tickers = list(set(t[0] for t in tickers_qty_entry))
+        data = yf.download(tickers, start=entry_date, interval='1d', progress=False)
+        if data.empty:
+            return None
+        close = data['Close'] if 'Close' in data.columns else data
+        if isinstance(close, pd.Series):
+            close = close.to_frame(name=tickers[0])
+        total_cost = sum(qty * ep for _, qty, ep in tickers_qty_entry)
+        if total_cost <= 0:
+            return None
+        daily_vals = []
+        for date in close.index:
+            port_val = 0
+            for tk, qty, ep in tickers_qty_entry:
+                if tk in close.columns:
+                    p = close.loc[date, tk]
+                    if pd.notna(p) and p > 0:
+                        port_val += qty * p
+                    else:
+                        port_val += qty * ep
+                else:
+                    port_val += qty * ep
+            daily_vals.append({'date': date, 'ret': (port_val / total_cost - 1) * 100})
+        if not daily_vals:
+            return None
+        return pd.DataFrame(daily_vals).set_index('date')['ret']
+    except:
+        return None
+
+
+def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio=None):
     st.markdown(f"### vs Benchmarks (since {entry_date})")
     bench = get_bench_data(entry_date, bench_prices)
     cols = st.columns(5)
@@ -143,8 +178,19 @@ def show_bench(total_pnl_pct, entry_date, bench_prices, label):
             cols[i+1].metric(sym, f"{r:+.2f}%", delta=f"{total_pnl_pct - r:+.2f}%p")
     if bench:
         fig = go.Figure()
-        fig.add_hline(y=total_pnl_pct, line_dash="solid", line_color="#1976D2",
-                      annotation_text=f"BERA {total_pnl_pct:+.1f}%", annotation_position="bottom right")
+        # BERA as line chart (same as benchmarks)
+        bera_daily = get_portfolio_daily(portfolio, entry_date) if portfolio else None
+        if bera_daily is not None:
+            fig.add_trace(go.Scatter(
+                x=bera_daily.index, y=bera_daily.values,
+                mode='lines+markers',
+                name=f"BERA {label} ({total_pnl_pct:+.1f}%)",
+                line=dict(color='#1976D2', width=3),
+                marker=dict(size=4),
+            ))
+        else:
+            fig.add_hline(y=total_pnl_pct, line_dash="solid", line_color="#1976D2",
+                          annotation_text=f"BERA {total_pnl_pct:+.1f}%", annotation_position="bottom right")
         fig.add_hline(y=0, line_dash="dot", line_color="gray")
         clr = {'XBI': '#E53935', 'IBB': '#FB8C00', 'SPY': '#43A047', 'QQQ': '#7B1FA2'}
         for sym in BENCH_SYMS:
@@ -155,6 +201,7 @@ def show_bench(total_pnl_pct, entry_date, bench_prices, label):
                     line=dict(color=clr.get(sym, 'gray'), width=2)))
         fig.update_layout(title=f'Cumulative Return since {entry_date}',
                           yaxis_title='Return (%)', height=380,
+                          hovermode='x unified',
                           legend=dict(orientation="h", yanchor="bottom", y=1.02))
         st.plotly_chart(fig, use_container_width=True)
 
@@ -229,7 +276,8 @@ if page == "💰 Core (Live)":
 
     show_charts(df)
     st.markdown("---")
-    show_bench(tpp, LIVE_ENTRY_DATE, LIVE_BENCH, "Core Live")
+    live_tqe = tuple((p['ticker'], p['qty'], p['entry']) for p in LIVE_PORTFOLIO)
+    show_bench(tpp, LIVE_ENTRY_DATE, LIVE_BENCH, "Core Live", portfolio=live_tqe)
 
 
 # ═══ Page: Core A/B ═══
@@ -296,8 +344,9 @@ elif page == "🅰️ Core A/B (Paper)":
         show_charts(combined)
         st.markdown("---")
         last_tpp = tpp
+        last_tqe = tuple((tk, qty, ep) for tk, qty, ep in core_stocks + DEFENSE_BASKET)
 
-    show_bench(last_tpp, COREAB_ENTRY_DATE, COREAB_BENCH, "Core A/B")
+    show_bench(last_tpp, COREAB_ENTRY_DATE, COREAB_BENCH, "Core A/B", portfolio=last_tqe)
 
 
 # ═══ Page: Satellite Config H ═══
@@ -343,7 +392,8 @@ elif page == "🎯 Satellite v2 (Paper)":
 
     show_charts(df)
     st.markdown("---")
-    show_bench(tpp, SAT_ENTRY_DATE, SAT_BENCH, "Satellite")
+    sat_tqe = tuple((p['ticker'], int(SAT_SEED_USD * p['weight_pct'] / 100 / p['entry']), p['entry']) for p in SAT_PORTFOLIO)
+    show_bench(tpp, SAT_ENTRY_DATE, SAT_BENCH, "Satellite", portfolio=sat_tqe)
 
 
 # ═══ Page: Core New ═══
@@ -389,7 +439,8 @@ elif page == "🏛️ Core v2 (Paper)":
 
     show_charts(df)
     st.markdown("---")
-    show_bench(tpp, CNEW_ENTRY_DATE, CNEW_BENCH, "Core v2")
+    cnew_tqe = tuple((p['ticker'], max(1, int(CNEW_SEED_USD * p['weight_mult'] / total_mult / p['entry'])), p['entry']) for p in CNEW_PORTFOLIO)
+    show_bench(tpp, CNEW_ENTRY_DATE, CNEW_BENCH, "Core v2", portfolio=cnew_tqe)
 
 
 # ═══ Page: Summary ═══

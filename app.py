@@ -202,33 +202,24 @@ PORTFOLIO_PAGES = [
 if 'page' not in st.session_state:
     st.session_state.page = "🧬 Quality Score"
 
-def _select_overview():
-    sel = st.session_state.get('ov_sel')
-    if sel:
-        st.session_state.page = sel
-        st.session_state.pop('pf_sel', None)
+def _nav(p):
+    st.session_state.page = p
 
-def _select_portfolio():
-    sel = st.session_state.get('pf_sel')
-    if sel:
-        st.session_state.page = sel
-        st.session_state.pop('ov_sel', None)
-
-cur = st.session_state.page
-ov_idx = OVERVIEW_PAGES.index(cur) if cur in OVERVIEW_PAGES else None
-pf_idx = PORTFOLIO_PAGES.index(cur) if cur in PORTFOLIO_PAGES else None
+def _nav_button(label):
+    is_current = st.session_state.page == label
+    st.sidebar.button(
+        label, use_container_width=True,
+        type="primary" if is_current else "secondary",
+        on_click=_nav, args=(label,), key=f"nav_{label}",
+    )
 
 st.sidebar.markdown("**Overview**")
-st.sidebar.radio(
-    "Overview", OVERVIEW_PAGES, index=ov_idx,
-    key="ov_sel", on_change=_select_overview, label_visibility="collapsed",
-)
+for label in OVERVIEW_PAGES:
+    _nav_button(label)
 
 st.sidebar.markdown("**Portfolios**")
-st.sidebar.radio(
-    "Portfolios", PORTFOLIO_PAGES, index=pf_idx,
-    key="pf_sel", on_change=_select_portfolio, label_visibility="collapsed",
-)
+for label in PORTFOLIO_PAGES:
+    _nav_button(label)
 
 page = st.session_state.page
 

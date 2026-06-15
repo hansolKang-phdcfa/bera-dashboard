@@ -360,7 +360,14 @@ elif page == "🅰️ Core A/B (Paper)":
             st.dataframe(ddf.sort_values('PnL%', ascending=False).style.format(fmt).map(style_fn, subset=['PnL','PnL%']),
                 use_container_width=True, hide_index=True)
 
-        show_charts(combined)
+        # Aggregate duplicate tickers (GILD, LLY in both Core & Defense) for charts
+        chart_df = combined.groupby('Ticker', as_index=False).agg({
+            'Value': 'sum', 'PnL': 'sum', 'Qty': 'sum',
+            'Entry': 'first', 'Current': 'first',
+        })
+        chart_df['PnL%'] = chart_df.apply(
+            lambda r: r['PnL'] / (r['Value'] - r['PnL']) * 100 if (r['Value'] - r['PnL']) > 0 else 0, axis=1)
+        show_charts(chart_df)
         st.markdown("---")
         last_tpp = tpp
         last_tqe = tuple((tk, qty, ep) for tk, qty, ep in core_stocks + DEFENSE_BASKET)

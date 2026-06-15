@@ -190,17 +190,51 @@ def show_charts(df):
 st.sidebar.title("BERA")
 st.sidebar.caption("Biotech Event-driven Research & Alpha")
 st.sidebar.markdown("---")
-page = st.sidebar.radio("Portfolio", [
+
+OVERVIEW_PAGES = ["🧬 Quality Score", "📊 Summary"]
+PORTFOLIO_PAGES = [
     "💰 Core (Live)",
     "🅰️ Core A/B (Paper)",
     "🎯 Satellite v2 (Paper)",
     "🏛️ Core v2 (Paper)",
-    "📊 Summary",
-    "🧬 Quality Score",
-])
+]
+
+if 'page' not in st.session_state:
+    st.session_state.page = "🧬 Quality Score"
+
+def _select_overview():
+    sel = st.session_state.get('ov_sel')
+    if sel:
+        st.session_state.page = sel
+        st.session_state.pop('pf_sel', None)
+
+def _select_portfolio():
+    sel = st.session_state.get('pf_sel')
+    if sel:
+        st.session_state.page = sel
+        st.session_state.pop('ov_sel', None)
+
+cur = st.session_state.page
+ov_idx = OVERVIEW_PAGES.index(cur) if cur in OVERVIEW_PAGES else None
+pf_idx = PORTFOLIO_PAGES.index(cur) if cur in PORTFOLIO_PAGES else None
+
+st.sidebar.markdown("**Overview**")
+st.sidebar.radio(
+    "Overview", OVERVIEW_PAGES, index=ov_idx,
+    key="ov_sel", on_change=_select_overview, label_visibility="collapsed",
+)
+
+st.sidebar.markdown("**Portfolios**")
+st.sidebar.radio(
+    "Portfolios", PORTFOLIO_PAGES, index=pf_idx,
+    key="pf_sel", on_change=_select_portfolio, label_visibility="collapsed",
+)
+
+page = st.session_state.page
+
+st.sidebar.markdown("---")
 if st.sidebar.button("Refresh"):
     st.cache_data.clear()
-st.sidebar.markdown("---")
 st.sidebar.caption("Updated: 2026-06-15")
 
 

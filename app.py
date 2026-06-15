@@ -2,6 +2,7 @@
 ======================================
 4 portfolios: Core (Live) | Core A/B (Paper) | Satellite Config H | Core New
 No strategy parameters exposed. No local DB dependency.
+Portfolio data loaded from data/portfolios.json (separate from UI code).
 """
 import streamlit as st
 import pandas as pd
@@ -9,97 +10,20 @@ import numpy as np
 import yfinance as yf
 import plotly.express as px
 import plotly.graph_objects as go
+import json, os
 from datetime import datetime, timedelta
 
 st.set_page_config(page_title="BERA Trading", page_icon="🧬", layout="wide")
 
-# ═══ Portfolio Data ═══
+# ═══ Load Portfolio Data from JSON ═══
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+with open(os.path.join(DATA_DIR, 'portfolios.json'), 'r') as f:
+    PF = json.load(f)
 
-# 1. Core Live (12종목, 한투 모의투자)
-# MLYS SL 6/8: $26.52->$22.50 (-15.2%), 86 shares, loss $345.72
-# Exit proceeds $1,935 -> 12종목 균등재배분 ($161.25/stock at 6/8 prices)
-LIVE_ENTRY_DATE = "2026-05-18"
-LIVE_SEED_KRW = 50_000_000
-LIVE_SEED_USD = 35000  # approx
-LIVE_BENCH = {'XBI': 129.64, 'IBB': 165.25, 'SPY': 739.57, 'QQQ': 707.26}
-LIVE_PORTFOLIO = [
-    {'ticker': 'CYTK', 'qty': 59, 'entry': 74.902},
-    {'ticker': 'NBIX', 'qty': 26, 'entry': 159.059},
-    {'ticker': 'LQDA', 'qty': 66, 'entry': 56.752},
-    {'ticker': 'UTHR', 'qty': 7, 'entry': 565.10},
-    {'ticker': 'DYN',  'qty': 144, 'entry': 16.845},
-    {'ticker': 'AMRX', 'qty': 175, 'entry': 11.988},
-    {'ticker': 'RCUS', 'qty': 100, 'entry': 23.781},
-    {'ticker': 'XENE', 'qty': 45, 'entry': 53.456},
-    {'ticker': 'CLDX', 'qty': 80, 'entry': 30.175},
-    {'ticker': 'JAZZ', 'qty': 11, 'entry': 229.648},
-    {'ticker': 'TVTX', 'qty': 49, 'entry': 43.329},
-    {'ticker': 'SYRE', 'qty': 28, 'entry': 71.139},
-]
-LIVE_SL_LOSS = 345.72  # MLYS realized loss
-LIVE_ORIG_COST = 34984.54  # original 13-stock cost (before MLYS SL)
-
-# 2. Core A/B (paper, 20 core + 10 defense each)
-COREAB_ENTRY_DATE = "2026-05-28"
-COREAB_SEED_USD = 50000
-COREAB_MACRO = 0.44  # Core 44% / Defense 56%
-COREAB_BENCH = {'XBI': 135.59, 'IBB': 171.68, 'SPY': 754.68, 'QQQ': 735.86}
-
-# Core stocks (qty, entry) — A has SLNO/EXEL, B has UTHR/BIIB
-# MLYS SL 6/3: $31.10->$25.70 (-17.4%), 37 shares, loss $199.80
-# Exit proceeds $950.90 -> 18종목 fractional 재배분 ($52.83/stock)
-COREA_CORE = [
-    ('AMRX', 77, 12.880), ('LQDA', 17, 61.266), ('LLY', 1, 1127.32),
-    ('BBIO', 19, 67.126), ('SLNO', 21, 53.01), ('EXEL', 23, 52.568),
-    ('ALNY', 3, 302.50), ('TVTX', 21, 47.238), ('ERAS', 95, 12.589),
-    ('XENE', 23, 53.880), ('GPCR', 25, 39.938), ('GILD', 8, 135.25),
-    ('VERA', 34, 34.191), ('CRSP', 19, 55.516), ('CYTK', 16, 76.419),
-    ('RYTM', 12, 92.00), ('IMVT', 35, 33.268), ('ZLAB', 54, 18.374),
-    ('CLDX', 37, 31.696),
-]
-COREB_CORE = [
-    ('AMRX', 77, 12.880), ('LQDA', 17, 61.266), ('LLY', 1, 1127.32),
-    ('BBIO', 19, 67.126), ('UTHR', 2, 568.91), ('BIIB', 6, 196.62),
-    ('ALNY', 3, 302.50), ('TVTX', 21, 47.238), ('ERAS', 95, 12.589),
-    ('XENE', 23, 53.880), ('GPCR', 25, 39.938), ('GILD', 8, 135.25),
-    ('VERA', 34, 34.191), ('CRSP', 19, 55.516), ('CYTK', 16, 76.419),
-    ('RYTM', 12, 92.00), ('IMVT', 35, 33.268), ('ZLAB', 54, 18.374),
-    ('CLDX', 37, 31.696),
-]
-COREAB_SL_LOSS = 199.80  # MLYS realized loss (per portfolio)
-COREAB_ORIG_COST = 46695.63  # original cost excluding SLNO
-DEFENSE_BASKET = [
-    ('ABBV', 12, 218.49), ('AMGN', 8, 335.34), ('LLY', 2, 1127.32),
-    ('REGN', 4, 624.86), ('BMY', 49, 56.53), ('VRTX', 6, 444.79),
-    ('MRK', 23, 120.39), ('JNJ', 12, 231.46), ('PFE', 106, 26.20),
-    ('GILD', 20, 135.25),
-]
-
-# 3. Satellite Config H (paper, 5종목)
-SAT_ENTRY_DATE = "2026-06-05"
-SAT_SEED_USD = 10000
-SAT_BENCH = {'XBI': 128.67, 'IBB': 168.49, 'SPY': 737.40, 'QQQ': 705.21}
-SAT_PORTFOLIO = [
-    {'ticker': 'ALMS', 'weight_pct': 20, 'entry': 19.06, 'prob': 0.864, 'smart_money': 'Deep Track + Foresite + Samsara'},
-    {'ticker': 'AVTX', 'weight_pct': 20, 'entry': 13.09, 'prob': 0.596, 'smart_money': 'Point72 + T.Rowe + OrbiMed'},
-    {'ticker': 'ANRO', 'weight_pct': 20, 'entry': 18.27, 'prob': 0.551, 'smart_money': 'Point72 + Sirenia + Vestal Point'},
-    {'ticker': 'IMRX', 'weight_pct': 20, 'entry': 4.26, 'prob': 0.658, 'smart_money': 'Empery + insider cluster'},
-    {'ticker': 'BIOA', 'weight_pct': 20, 'entry': 15.68, 'prob': 0.574, 'smart_money': 'Cormorant + Khosla'},
-]
-
-# 4. Core New (paper, 7종목)
-CNEW_ENTRY_DATE = "2026-06-05"
-CNEW_SEED_USD = 50000
-CNEW_BENCH = {'XBI': 128.67, 'IBB': 168.49, 'SPY': 737.40, 'QQQ': 705.21}
-CNEW_PORTFOLIO = [
-    {'ticker': 'MLYS', 'weight_mult': 1.0, 'entry': 23.72, 'prob': 0.866},
-    {'ticker': 'ALMS', 'weight_mult': 1.0, 'entry': 19.06, 'prob': 0.864},
-    {'ticker': 'INDV', 'weight_mult': 1.0, 'entry': 37.63, 'prob': 0.808},
-    {'ticker': 'LLY',  'weight_mult': 1.0, 'entry': 1132.53, 'prob': 0.562},
-    {'ticker': 'GILD', 'weight_mult': 1.5, 'entry': 129.01, 'prob': 0.759},
-    {'ticker': 'ABBV', 'weight_mult': 1.5, 'entry': 227.26, 'prob': 0.638},
-    {'ticker': 'ARQT', 'weight_mult': 1.0, 'entry': 21.22, 'prob': 0.560},
-]
+LIVE = PF['core_live']
+CAB = PF['core_ab']
+SAT = PF['satellite']
+CNEW = PF['core_new']
 
 BENCH_SYMS = ['XBI', 'IBB', 'SPY', 'QQQ']
 
@@ -253,20 +177,20 @@ page = st.sidebar.radio("Portfolio", [
 if st.sidebar.button("Refresh"):
     st.cache_data.clear()
 st.sidebar.markdown("---")
-st.sidebar.caption("Updated: 2026-06-08")
+st.sidebar.caption("Updated: 2026-06-15")
 
 
 # ═══ Page: Core Live ═══
 if page == "💰 Core (Live)":
     st.title("Core Portfolio -- Live Trading")
-    st.markdown(f"Entry: 2026-05-18 10:30 AM ET | Seed: 50,000,000 KRW | 12 stocks (MLYS SL'd)")
+    st.markdown(LIVE['entry_note'])
     st.markdown("---")
 
-    tickers = [p['ticker'] for p in LIVE_PORTFOLIO]
+    tickers = [p['ticker'] for p in LIVE['portfolio']]
     prices = get_prices_batch(tickers)
 
     rows = []
-    for p in LIVE_PORTFOLIO:
+    for p in LIVE['portfolio']:
         cur = prices.get(p['ticker'], p['entry'])
         if cur <= 0: cur = p['entry']
         cost = p['qty'] * p['entry']
@@ -277,13 +201,13 @@ if page == "💰 Core (Live)":
                       'PnL%': pnl/cost*100 if cost > 0 else 0})
 
     df = pd.DataFrame(rows)
-    tc = df['Value'].sum(); tp = df['PnL'].sum() - LIVE_SL_LOSS
-    tpp = tp / LIVE_ORIG_COST * 100
+    tc = df['Value'].sum(); tp = df['PnL'].sum() - LIVE['sl_loss']
+    tpp = tp / LIVE['orig_cost'] * 100
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Portfolio Value", f"${tc:,.0f}")
     c2.metric("Total PnL", f"${tp:+,.0f}", delta=f"{tpp:+.2f}%")
-    c3.metric("Stocks", f"{len(LIVE_PORTFOLIO)}")
+    c3.metric("Stocks", f"{len(LIVE['portfolio'])}")
 
     st.dataframe(df.sort_values('Value', ascending=False).style.format({
         'Entry': '${:.2f}', 'Current': '${:.2f}', 'Value': '${:,.0f}',
@@ -295,27 +219,32 @@ if page == "💰 Core (Live)":
 
     show_charts(df)
     st.markdown("---")
-    live_tqe = tuple((p['ticker'], p['qty'], p['entry']) for p in LIVE_PORTFOLIO)
-    show_bench(tpp, LIVE_ENTRY_DATE, LIVE_BENCH, "Core Live", portfolio=live_tqe)
+    live_tqe = tuple((p['ticker'], p['qty'], p['entry']) for p in LIVE['portfolio'])
+    show_bench(tpp, LIVE['entry_date'], LIVE['bench'], "Core Live", portfolio=live_tqe)
 
 
 # ═══ Page: Core A/B ═══
 elif page == "🅰️ Core A/B (Paper)":
     st.title("Core A/B -- Paper Trading")
-    st.markdown(f"Entry: 2026-05-28 12:23 PM ET | Seed: $50,000 | Macro 44% Core / 56% Defense")
+    st.markdown(CAB['entry_note'])
     st.markdown("---")
 
-    all_tickers = list(set([t[0] for t in COREA_CORE + COREB_CORE + DEFENSE_BASKET]))
+    all_tickers = list(set(
+        [s['ticker'] for s in CAB['core_a']] +
+        [s['ticker'] for s in CAB['core_b']] +
+        [s['ticker'] for s in CAB['defense']]
+    ))
     prices = get_prices_batch(all_tickers)
 
     last_tpp = 0
-    for label, core_stocks in [("Core A", COREA_CORE), ("Core B", COREB_CORE)]:
+    for label, core_stocks_raw in [("Core A", CAB['core_a']), ("Core B", CAB['core_b'])]:
         st.markdown(f"### {label}")
 
         # Core stocks
-        st.markdown(f"**Core ({len(core_stocks)} stocks, {COREAB_MACRO*100:.0f}% allocation)**")
+        st.markdown(f"**Core ({len(core_stocks_raw)} stocks, {CAB['macro']*100:.0f}% allocation)**")
         rows = []
-        for tk, qty, ep in core_stocks:
+        for s in core_stocks_raw:
+            tk, qty, ep = s['ticker'], s['qty'], s['entry']
             cur = prices.get(tk, ep)
             if cur <= 0: cur = ep
             cost = qty * ep; val = qty * cur; pnl = val - cost
@@ -324,9 +253,11 @@ elif page == "🅰️ Core A/B (Paper)":
         cdf = pd.DataFrame(rows)
 
         # Defense basket
-        st.markdown(f"**Defense ({len(DEFENSE_BASKET)} stocks, {(1-COREAB_MACRO)*100:.0f}% allocation)**")
+        defense_raw = CAB['defense']
+        st.markdown(f"**Defense ({len(defense_raw)} stocks, {(1-CAB['macro'])*100:.0f}% allocation)**")
         drows = []
-        for tk, qty, ep in DEFENSE_BASKET:
+        for s in defense_raw:
+            tk, qty, ep = s['ticker'], s['qty'], s['entry']
             cur = prices.get(tk, ep)
             if cur <= 0: cur = ep
             cost = qty * ep; val = qty * cur; pnl = val - cost
@@ -336,8 +267,8 @@ elif page == "🅰️ Core A/B (Paper)":
 
         # Combined
         combined = pd.concat([cdf, ddf], ignore_index=True)
-        tc = combined['Value'].sum(); tp = combined['PnL'].sum() - COREAB_SL_LOSS
-        tpp = tp / COREAB_ORIG_COST * 100
+        tc = combined['Value'].sum(); tp = combined['PnL'].sum() - CAB['sl_loss']
+        tpp = tp / CAB['orig_cost'] * 100
         core_pnl = cdf['PnL'].sum()
         def_pnl = ddf['PnL'].sum()
 
@@ -345,7 +276,7 @@ elif page == "🅰️ Core A/B (Paper)":
         c1.metric(f"{label} Total", f"${tc:,.0f}", delta=f"{tpp:+.2f}%")
         c2.metric("Core PnL", f"${core_pnl:+,.0f}")
         c3.metric("Defense PnL", f"${def_pnl:+,.0f}")
-        c4.metric("Stocks", f"{len(core_stocks)} + {len(DEFENSE_BASKET)}")
+        c4.metric("Stocks", f"{len(core_stocks_raw)} + {len(defense_raw)}")
 
         fmt = {'Entry': '${:.2f}', 'Current': '${:.2f}', 'Value': '${:,.0f}',
                'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'}
@@ -370,26 +301,28 @@ elif page == "🅰️ Core A/B (Paper)":
         show_charts(chart_df)
         st.markdown("---")
         last_tpp = tpp
-        last_tqe = tuple((tk, qty, ep) for tk, qty, ep in core_stocks + DEFENSE_BASKET)
+        core_tqe = [(s['ticker'], s['qty'], s['entry']) for s in core_stocks_raw]
+        def_tqe = [(s['ticker'], s['qty'], s['entry']) for s in defense_raw]
+        last_tqe = tuple(core_tqe + def_tqe)
 
-    show_bench(last_tpp, COREAB_ENTRY_DATE, COREAB_BENCH, "Core A/B", portfolio=last_tqe)
+    show_bench(last_tpp, CAB['entry_date'], CAB['bench'], "Core A/B", portfolio=last_tqe)
 
 
 # ═══ Page: Satellite Config H ═══
 elif page == "🎯 Satellite v2 (Paper)":
     st.title("Satellite v2 -- Paper Tracking")
-    st.markdown(f"Entry: 2026-06-05 4:00 PM ET | Seed: $10,000 | Smart money + clinical AI scoring")
-    st.markdown("Backtest: CAGR 83.8%, Sharpe 1.98, MDD -45.4% (3.1yr)")
+    st.markdown(SAT['entry_note'])
+    st.markdown(SAT['backtest_note'])
     st.markdown("---")
 
-    tickers = [p['ticker'] for p in SAT_PORTFOLIO]
+    tickers = [p['ticker'] for p in SAT['portfolio']]
     prices = get_prices_batch(tickers)
 
     rows = []
-    for p in SAT_PORTFOLIO:
+    for p in SAT['portfolio']:
         cur = prices.get(p['ticker'], p['entry'])
         if cur <= 0: cur = p['entry']
-        alloc = SAT_SEED_USD * p['weight_pct'] / 100
+        alloc = SAT['seed_usd'] * p['weight_pct'] / 100
         qty = int(alloc / p['entry'])
         cost = qty * p['entry']; val = qty * cur; pnl = val - cost
         rows.append({'Ticker': p['ticker'], 'Weight': f"{p['weight_pct']}%",
@@ -400,13 +333,12 @@ elif page == "🎯 Satellite v2 (Paper)":
     df = pd.DataFrame(rows)
     tc = df['Value'].sum(); tp = df['PnL'].sum()
     tpp = tp / (tc - tp) * 100 if (tc - tp) > 0 else 0
-    cash = SAT_SEED_USD - (df['Entry'] * df.apply(lambda r: int(SAT_SEED_USD * int(r['Weight'].replace('%','')) / 100 / r['Entry']), axis=1)).sum()
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Active", f"{len(SAT_PORTFOLIO)} / 10 slots")
+    c1.metric("Active", f"{len(SAT['portfolio'])} / {SAT['max_slots']} slots")
     c2.metric("Invested", f"${tc:,.0f}")
     c3.metric("PnL", f"${tp:+,.0f}", delta=f"{tpp:+.2f}%")
-    c4.metric("Slots Available", f"{10 - len(SAT_PORTFOLIO)}")
+    c4.metric("Slots Available", f"{SAT['max_slots'] - len(SAT['portfolio'])}")
 
     st.dataframe(df.style.format({
         'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
@@ -418,26 +350,26 @@ elif page == "🎯 Satellite v2 (Paper)":
 
     show_charts(df)
     st.markdown("---")
-    sat_tqe = tuple((p['ticker'], int(SAT_SEED_USD * p['weight_pct'] / 100 / p['entry']), p['entry']) for p in SAT_PORTFOLIO)
-    show_bench(tpp, SAT_ENTRY_DATE, SAT_BENCH, "Satellite", portfolio=sat_tqe)
+    sat_tqe = tuple((p['ticker'], int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry']), p['entry']) for p in SAT['portfolio'])
+    show_bench(tpp, SAT['entry_date'], SAT['bench'], "Satellite", portfolio=sat_tqe)
 
 
 # ═══ Page: Core New ═══
 elif page == "🏛️ Core v2 (Paper)":
     st.title("Core v2 -- Paper Tracking")
-    st.markdown(f"Entry: 2026-06-05 4:00 PM ET | Seed: $50,000 | Clinical AI + fundamental filters")
-    st.markdown("Backtest: CAGR 42.8%, Sharpe 1.23, MDD -32.5% (7.4yr)")
+    st.markdown(CNEW['entry_note'])
+    st.markdown(CNEW['backtest_note'])
     st.markdown("---")
 
-    tickers = [p['ticker'] for p in CNEW_PORTFOLIO]
+    tickers = [p['ticker'] for p in CNEW['portfolio']]
     prices = get_prices_batch(tickers)
-    total_mult = sum(p['weight_mult'] for p in CNEW_PORTFOLIO)
+    total_mult = sum(p['weight_mult'] for p in CNEW['portfolio'])
 
     rows = []
-    for p in CNEW_PORTFOLIO:
+    for p in CNEW['portfolio']:
         cur = prices.get(p['ticker'], p['entry'])
         if cur <= 0: cur = p['entry']
-        alloc = CNEW_SEED_USD * p['weight_mult'] / total_mult
+        alloc = CNEW['seed_usd'] * p['weight_mult'] / total_mult
         qty = max(1, int(alloc / p['entry']))
         cost = qty * p['entry']; val = qty * cur; pnl = val - cost
         rows.append({'Ticker': p['ticker'],
@@ -450,10 +382,10 @@ elif page == "🏛️ Core v2 (Paper)":
     tpp = tp / (tc - tp) * 100 if (tc - tp) > 0 else 0
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Active", f"{len(CNEW_PORTFOLIO)} / 20 slots")
+    c1.metric("Active", f"{len(CNEW['portfolio'])} / {CNEW['max_slots']} slots")
     c2.metric("Invested", f"${tc:,.0f}")
     c3.metric("PnL", f"${tp:+,.0f}", delta=f"{tpp:+.2f}%")
-    c4.metric("Slots Available", f"{20 - len(CNEW_PORTFOLIO)}")
+    c4.metric("Slots Available", f"{CNEW['max_slots'] - len(CNEW['portfolio'])}")
 
     st.dataframe(df.style.format({
         'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
@@ -465,8 +397,8 @@ elif page == "🏛️ Core v2 (Paper)":
 
     show_charts(df)
     st.markdown("---")
-    cnew_tqe = tuple((p['ticker'], max(1, int(CNEW_SEED_USD * p['weight_mult'] / total_mult / p['entry'])), p['entry']) for p in CNEW_PORTFOLIO)
-    show_bench(tpp, CNEW_ENTRY_DATE, CNEW_BENCH, "Core v2", portfolio=cnew_tqe)
+    cnew_tqe = tuple((p['ticker'], max(1, int(CNEW['seed_usd'] * p['weight_mult'] / total_mult / p['entry'])), p['entry']) for p in CNEW['portfolio'])
+    show_bench(tpp, CNEW['entry_date'], CNEW['bench'], "Core v2", portfolio=cnew_tqe)
 
 
 # ═══ Page: Summary ═══
@@ -478,59 +410,60 @@ elif page == "📊 Summary":
     summaries = []
 
     # Core Live
-    tickers = [p['ticker'] for p in LIVE_PORTFOLIO]
+    tickers = [p['ticker'] for p in LIVE['portfolio']]
     px_live = get_prices_batch(tickers)
     tc = 0; tv = 0
-    for p in LIVE_PORTFOLIO:
+    for p in LIVE['portfolio']:
         cur = px_live.get(p['ticker'], p['entry'])
         if cur <= 0: cur = p['entry']
         tc += p['qty'] * p['entry']; tv += p['qty'] * cur
-    summaries.append({'Portfolio': 'Core (Live)', 'Entry': LIVE_ENTRY_DATE,
-                       'Seed': f"${LIVE_SEED_USD:,}", 'Stocks': len(LIVE_PORTFOLIO),
+    summaries.append({'Portfolio': 'Core (Live)', 'Entry': LIVE['entry_date'],
+                       'Seed': f"${LIVE['seed_usd']:,}", 'Stocks': len(LIVE['portfolio']),
                        'Value': tv, 'PnL': tv-tc, 'PnL%': (tv-tc)/tc*100 if tc>0 else 0,
-                       'Days': (pd.Timestamp.now()-pd.Timestamp(LIVE_ENTRY_DATE)).days})
+                       'Days': (pd.Timestamp.now()-pd.Timestamp(LIVE['entry_date'])).days})
 
     # Core A (core + defense)
-    all_ab = list(set([t[0] for t in COREA_CORE + DEFENSE_BASKET]))
+    all_ab = list(set([s['ticker'] for s in CAB['core_a']] + [s['ticker'] for s in CAB['defense']]))
     px_ab = get_prices_batch(all_ab)
     tc = 0; tv = 0
-    for tk, qty, ep in COREA_CORE + DEFENSE_BASKET:
+    for s in CAB['core_a'] + CAB['defense']:
+        tk, qty, ep = s['ticker'], s['qty'], s['entry']
         cur = px_ab.get(tk, ep)
         if cur <= 0: cur = ep
         tc += qty * ep; tv += qty * cur
-    summaries.append({'Portfolio': 'Core A (Paper)', 'Entry': COREAB_ENTRY_DATE,
-                       'Seed': f"${COREAB_SEED_USD:,}", 'Stocks': len(COREA_CORE)+len(DEFENSE_BASKET),
+    summaries.append({'Portfolio': 'Core A (Paper)', 'Entry': CAB['entry_date'],
+                       'Seed': f"${CAB['seed_usd']:,}", 'Stocks': len(CAB['core_a'])+len(CAB['defense']),
                        'Value': tv, 'PnL': tv-tc, 'PnL%': (tv-tc)/tc*100 if tc>0 else 0,
-                       'Days': (pd.Timestamp.now()-pd.Timestamp(COREAB_ENTRY_DATE)).days})
+                       'Days': (pd.Timestamp.now()-pd.Timestamp(CAB['entry_date'])).days})
 
     # Satellite v2
-    tickers = [p['ticker'] for p in SAT_PORTFOLIO]
+    tickers = [p['ticker'] for p in SAT['portfolio']]
     px_sat = get_prices_batch(tickers)
     tc = 0; tv = 0
-    for p in SAT_PORTFOLIO:
+    for p in SAT['portfolio']:
         cur = px_sat.get(p['ticker'], p['entry'])
         if cur <= 0: cur = p['entry']
-        q = int(SAT_SEED_USD * p['weight_pct'] / 100 / p['entry'])
+        q = int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry'])
         tc += q * p['entry']; tv += q * cur
-    summaries.append({'Portfolio': 'Satellite v2 (Paper)', 'Entry': SAT_ENTRY_DATE,
-                       'Seed': f"${SAT_SEED_USD:,}", 'Stocks': len(SAT_PORTFOLIO),
+    summaries.append({'Portfolio': 'Satellite v2 (Paper)', 'Entry': SAT['entry_date'],
+                       'Seed': f"${SAT['seed_usd']:,}", 'Stocks': len(SAT['portfolio']),
                        'Value': tv, 'PnL': tv-tc, 'PnL%': (tv-tc)/tc*100 if tc>0 else 0,
-                       'Days': (pd.Timestamp.now()-pd.Timestamp(SAT_ENTRY_DATE)).days})
+                       'Days': (pd.Timestamp.now()-pd.Timestamp(SAT['entry_date'])).days})
 
     # Core v2
-    tickers = [p['ticker'] for p in CNEW_PORTFOLIO]
+    tickers = [p['ticker'] for p in CNEW['portfolio']]
     px_cnew = get_prices_batch(tickers)
-    tm = sum(p['weight_mult'] for p in CNEW_PORTFOLIO)
+    tm = sum(p['weight_mult'] for p in CNEW['portfolio'])
     tc = 0; tv = 0
-    for p in CNEW_PORTFOLIO:
+    for p in CNEW['portfolio']:
         cur = px_cnew.get(p['ticker'], p['entry'])
         if cur <= 0: cur = p['entry']
-        q = max(1, int(CNEW_SEED_USD * p['weight_mult'] / tm / p['entry']))
+        q = max(1, int(CNEW['seed_usd'] * p['weight_mult'] / tm / p['entry']))
         tc += q * p['entry']; tv += q * cur
-    summaries.append({'Portfolio': 'Core v2 (Paper)', 'Entry': CNEW_ENTRY_DATE,
-                       'Seed': f"${CNEW_SEED_USD:,}", 'Stocks': len(CNEW_PORTFOLIO),
+    summaries.append({'Portfolio': 'Core v2 (Paper)', 'Entry': CNEW['entry_date'],
+                       'Seed': f"${CNEW['seed_usd']:,}", 'Stocks': len(CNEW['portfolio']),
                        'Value': tv, 'PnL': tv-tc, 'PnL%': (tv-tc)/tc*100 if tc>0 else 0,
-                       'Days': (pd.Timestamp.now()-pd.Timestamp(CNEW_ENTRY_DATE)).days})
+                       'Days': (pd.Timestamp.now()-pd.Timestamp(CNEW['entry_date'])).days})
 
     sdf = pd.DataFrame(summaries)
     st.dataframe(sdf.style.format({
@@ -628,9 +561,8 @@ Key observations:
     st.markdown("---")
 
     # Load data
-    import os
-    SCORES_PATH = os.path.join(os.path.dirname(__file__), 'data', 'trial_survival_ticker_scores.csv')
-    UNIVERSE_PATH = os.path.join(os.path.dirname(__file__), 'data', 'universe.csv')
+    SCORES_PATH = os.path.join(DATA_DIR, 'trial_survival_ticker_scores.csv')
+    UNIVERSE_PATH = os.path.join(DATA_DIR, 'universe.csv')
 
     try:
         scores_df = pd.read_csv(SCORES_PATH)

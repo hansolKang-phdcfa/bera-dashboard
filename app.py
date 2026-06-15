@@ -99,20 +99,32 @@ BENCH_SYMS = ['XBI', 'IBB', 'SPY', 'QQQ']
 # ═══ Helpers ═══
 
 @st.cache_data(ttl=300)
-def get_price(ticker):
-    try:
-        t = yf.Ticker(ticker)
-        info = t.info
-        pre = info.get('preMarketPrice')
-        post = info.get('postMarketPrice')
-        reg = info.get('currentPrice') or info.get('regularMarketPrice')
-        return float(pre or post or reg or t.fast_info.get('lastPrice', 0))
-    except:
-        return 0.0
-
-@st.cache_data(ttl=300)
 def get_prices_batch(tickers):
-    return {tk: get_price(tk) for tk in tickers}
+    """Fetch latest prices via yf.download (single API call, avoids rate-limit)."""
+    tickers = list(set(tickers))
+    result = {}
+    try:
+        data = yf.download(tickers, period='5d', interval='1d', progress=False)
+        if data.empty:
+            return result
+        close = data['Close'] if 'Close' in data.columns else data
+        if isinstance(close, pd.Series):
+            close = close.to_frame(name=tickers[0])
+        for tk in tickers:
+            if tk in close.columns:
+                vals = close[tk].dropna()
+                if not vals.empty:
+                    result[tk] = float(vals.iloc[-1])
+    except Exception:
+        pass
+    # Fallback for any missing tickers: try individual fast_info
+    for tk in tickers:
+        if tk not in result or result[tk] <= 0:
+            try:
+                result[tk] = float(yf.Ticker(tk).fast_info.get('lastPrice', 0))
+            except Exception:
+                pass
+    return result
 
 @st.cache_data(ttl=600)
 def get_bench_data(entry_date, entry_prices):

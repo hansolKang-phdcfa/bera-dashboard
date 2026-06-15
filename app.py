@@ -460,9 +460,10 @@ elif page == "📊 Summary":
         cur = px_live.get(p['ticker'], p['entry'])
         if cur <= 0: cur = p['entry']
         tc += p['qty'] * p['entry']; tv += p['qty'] * cur
+    pnl = tv - tc - LIVE['sl_loss']
     summaries.append({'Portfolio': 'Core (Live)', 'Entry': LIVE['entry_date'],
                        'Seed': f"${LIVE['seed_usd']:,}", 'Stocks': len(LIVE['portfolio']),
-                       'Value': tv, 'PnL': tv-tc, 'PnL%': (tv-tc)/tc*100 if tc>0 else 0,
+                       'Value': tv, 'PnL': pnl, 'PnL%': pnl/LIVE['orig_cost']*100 if LIVE['orig_cost']>0 else 0,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(LIVE['entry_date'])).days})
 
     # Core A (core + defense)
@@ -474,9 +475,10 @@ elif page == "📊 Summary":
         cur = px_ab.get(tk, ep)
         if cur <= 0: cur = ep
         tc += qty * ep; tv += qty * cur
+    pnl = tv - tc - CAB['sl_loss']
     summaries.append({'Portfolio': 'Core A (Paper)', 'Entry': CAB['entry_date'],
                        'Seed': f"${CAB['seed_usd']:,}", 'Stocks': len(CAB['core_a'])+len(CAB['defense']),
-                       'Value': tv, 'PnL': tv-tc, 'PnL%': (tv-tc)/tc*100 if tc>0 else 0,
+                       'Value': tv, 'PnL': pnl, 'PnL%': pnl/CAB['orig_cost']*100 if CAB['orig_cost']>0 else 0,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(CAB['entry_date'])).days})
 
     # Satellite v2

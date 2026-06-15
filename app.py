@@ -15,26 +15,29 @@ st.set_page_config(page_title="BERA Trading", page_icon="🧬", layout="wide")
 
 # ═══ Portfolio Data ═══
 
-# 1. Core Live (13종목, 한투 모의투자)
+# 1. Core Live (12종목, 한투 모의투자)
+# MLYS SL 6/8: $26.52->$22.50 (-15.2%), 86 shares, loss $345.72
+# Exit proceeds $1,935 -> 12종목 균등재배분 ($161.25/stock at 6/8 prices)
 LIVE_ENTRY_DATE = "2026-05-18"
 LIVE_SEED_KRW = 50_000_000
 LIVE_SEED_USD = 35000  # approx
 LIVE_BENCH = {'XBI': 129.64, 'IBB': 165.25, 'SPY': 739.57, 'QQQ': 707.26}
 LIVE_PORTFOLIO = [
-    {'ticker': 'CYTK', 'qty': 57, 'entry': 75.148},
-    {'ticker': 'NBIX', 'qty': 25, 'entry': 158.897},
-    {'ticker': 'LQDA', 'qty': 64, 'entry': 56.529},
+    {'ticker': 'CYTK', 'qty': 59, 'entry': 74.902},
+    {'ticker': 'NBIX', 'qty': 26, 'entry': 159.059},
+    {'ticker': 'LQDA', 'qty': 66, 'entry': 56.752},
     {'ticker': 'UTHR', 'qty': 7, 'entry': 565.10},
-    {'ticker': 'DYN',  'qty': 135, 'entry': 16.847},
-    {'ticker': 'AMRX', 'qty': 164, 'entry': 11.872},
-    {'ticker': 'RCUS', 'qty': 94, 'entry': 23.81},
-    {'ticker': 'XENE', 'qty': 42, 'entry': 53.616},
-    {'ticker': 'CLDX', 'qty': 75, 'entry': 30.283},
-    {'ticker': 'JAZZ', 'qty': 9, 'entry': 229.117},
-    {'ticker': 'TVTX', 'qty': 46, 'entry': 43.084},
-    {'ticker': 'MLYS', 'qty': 86, 'entry': 26.52},
-    {'ticker': 'SYRE', 'qty': 26, 'entry': 71.073},
+    {'ticker': 'DYN',  'qty': 144, 'entry': 16.845},
+    {'ticker': 'AMRX', 'qty': 175, 'entry': 11.988},
+    {'ticker': 'RCUS', 'qty': 100, 'entry': 23.781},
+    {'ticker': 'XENE', 'qty': 45, 'entry': 53.456},
+    {'ticker': 'CLDX', 'qty': 80, 'entry': 30.175},
+    {'ticker': 'JAZZ', 'qty': 11, 'entry': 229.648},
+    {'ticker': 'TVTX', 'qty': 49, 'entry': 43.329},
+    {'ticker': 'SYRE', 'qty': 28, 'entry': 71.139},
 ]
+LIVE_SL_LOSS = 345.72  # MLYS realized loss
+LIVE_ORIG_COST = 34984.54  # original 13-stock cost (before MLYS SL)
 
 # 2. Core A/B (paper, 20 core + 10 defense each)
 COREAB_ENTRY_DATE = "2026-05-28"
@@ -43,24 +46,28 @@ COREAB_MACRO = 0.44  # Core 44% / Defense 56%
 COREAB_BENCH = {'XBI': 135.59, 'IBB': 171.68, 'SPY': 754.68, 'QQQ': 735.86}
 
 # Core stocks (qty, entry) — A has SLNO/EXEL, B has UTHR/BIIB
+# MLYS SL 6/3: $31.10->$25.70 (-17.4%), 37 shares, loss $199.80
+# Exit proceeds $950.90 -> 18종목 fractional 재배분 ($52.83/stock)
 COREA_CORE = [
-    ('AMRX', 74, 12.88), ('LQDA', 15, 62.01), ('LLY', 1, 1127.32),
-    ('BBIO', 17, 67.32), ('SLNO', 21, 53.01), ('EXEL', 21, 52.66),
-    ('ALNY', 3, 302.50), ('TVTX', 20, 47.34), ('ERAS', 92, 12.57),
-    ('XENE', 21, 53.92), ('GPCR', 24, 40.04), ('GILD', 8, 135.25),
-    ('VERA', 33, 34.28), ('CRSP', 17, 55.92), ('CYTK', 15, 76.80),
-    ('RYTM', 12, 92.00), ('IMVT', 34, 33.33), ('ZLAB', 52, 18.42),
-    ('CLDX', 36, 31.75), ('MLYS', 37, 31.10),
+    ('AMRX', 77, 12.880), ('LQDA', 17, 61.266), ('LLY', 1, 1127.32),
+    ('BBIO', 19, 67.126), ('SLNO', 21, 53.01), ('EXEL', 23, 52.568),
+    ('ALNY', 3, 302.50), ('TVTX', 21, 47.238), ('ERAS', 95, 12.589),
+    ('XENE', 23, 53.880), ('GPCR', 25, 39.938), ('GILD', 8, 135.25),
+    ('VERA', 34, 34.191), ('CRSP', 19, 55.516), ('CYTK', 16, 76.419),
+    ('RYTM', 12, 92.00), ('IMVT', 35, 33.268), ('ZLAB', 54, 18.374),
+    ('CLDX', 37, 31.696),
 ]
 COREB_CORE = [
-    ('AMRX', 74, 12.88), ('LQDA', 15, 62.01), ('LLY', 1, 1127.32),
-    ('BBIO', 17, 67.32), ('UTHR', 2, 568.91), ('BIIB', 6, 196.62),
-    ('ALNY', 3, 302.50), ('TVTX', 20, 47.34), ('ERAS', 92, 12.57),
-    ('XENE', 21, 53.92), ('GPCR', 24, 40.04), ('GILD', 8, 135.25),
-    ('VERA', 33, 34.28), ('CRSP', 17, 55.92), ('CYTK', 15, 76.80),
-    ('RYTM', 12, 92.00), ('IMVT', 34, 33.33), ('ZLAB', 52, 18.42),
-    ('CLDX', 36, 31.75), ('MLYS', 37, 31.10),
+    ('AMRX', 77, 12.880), ('LQDA', 17, 61.266), ('LLY', 1, 1127.32),
+    ('BBIO', 19, 67.126), ('UTHR', 2, 568.91), ('BIIB', 6, 196.62),
+    ('ALNY', 3, 302.50), ('TVTX', 21, 47.238), ('ERAS', 95, 12.589),
+    ('XENE', 23, 53.880), ('GPCR', 25, 39.938), ('GILD', 8, 135.25),
+    ('VERA', 34, 34.191), ('CRSP', 19, 55.516), ('CYTK', 16, 76.419),
+    ('RYTM', 12, 92.00), ('IMVT', 35, 33.268), ('ZLAB', 54, 18.374),
+    ('CLDX', 37, 31.696),
 ]
+COREAB_SL_LOSS = 199.80  # MLYS realized loss (per portfolio)
+COREAB_ORIG_COST = 46695.63  # original cost excluding SLNO
 DEFENSE_BASKET = [
     ('ABBV', 12, 218.49), ('AMGN', 8, 335.34), ('LLY', 2, 1127.32),
     ('REGN', 4, 624.86), ('BMY', 49, 56.53), ('VRTX', 6, 444.79),
@@ -252,7 +259,7 @@ st.sidebar.caption("Updated: 2026-06-08")
 # ═══ Page: Core Live ═══
 if page == "💰 Core (Live)":
     st.title("Core Portfolio -- Live Trading")
-    st.markdown(f"Entry: 2026-05-18 10:30 AM ET | Seed: 50,000,000 KRW | 13 stocks")
+    st.markdown(f"Entry: 2026-05-18 10:30 AM ET | Seed: 50,000,000 KRW | 12 stocks (MLYS SL'd)")
     st.markdown("---")
 
     tickers = [p['ticker'] for p in LIVE_PORTFOLIO]
@@ -270,8 +277,8 @@ if page == "💰 Core (Live)":
                       'PnL%': pnl/cost*100 if cost > 0 else 0})
 
     df = pd.DataFrame(rows)
-    tc = df['Value'].sum(); tp = df['PnL'].sum()
-    tpp = tp / (tc - tp) * 100 if (tc - tp) > 0 else 0
+    tc = df['Value'].sum(); tp = df['PnL'].sum() - LIVE_SL_LOSS
+    tpp = tp / LIVE_ORIG_COST * 100
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Portfolio Value", f"${tc:,.0f}")
@@ -329,8 +336,8 @@ elif page == "🅰️ Core A/B (Paper)":
 
         # Combined
         combined = pd.concat([cdf, ddf], ignore_index=True)
-        tc = combined['Value'].sum(); tp = combined['PnL'].sum()
-        tpp = tp / (tc - tp) * 100 if (tc - tp) > 0 else 0
+        tc = combined['Value'].sum(); tp = combined['PnL'].sum() - COREAB_SL_LOSS
+        tpp = tp / COREAB_ORIG_COST * 100
         core_pnl = cdf['PnL'].sum()
         def_pnl = ddf['PnL'].sum()
 

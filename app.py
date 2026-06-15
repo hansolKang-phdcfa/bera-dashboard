@@ -76,24 +76,48 @@ def get_bench_data(entry_date, entry_prices):
 
 
 @st.cache_data(ttl=600)
-def get_portfolio_daily(tickers_qty_entry, entry_date):
-    """Calculate daily portfolio cumulative return series."""
+def get_portfolio_daily(tickers_qty_entry, entry_date, sl_events=None):
+    """Calculate daily portfolio cumulative return series.
+
+    sl_events: list of {'date': 'YYYY-MM-DD', 'old_portfolio': [(tk,qty,ep),...]}
+    Before sl_date: use old_portfolio (includes SL'd stock).
+    After sl_date: use tickers_qty_entry (redistributed, SL'd stock removed).
+    Denominator: always old_portfolio cost (= original investment).
+    """
     try:
         tickers_qty_entry = list(tickers_qty_entry)
-        tickers = list(set(t[0] for t in tickers_qty_entry))
-        data = yf.download(tickers, start=entry_date, interval='1d', progress=False)
+        all_tickers = set(t[0] for t in tickers_qty_entry)
+        old_pf = None
+        sl_date = None
+        if sl_events:
+            ev = sl_events[0]
+            old_pf = ev['old_portfolio']
+            sl_date = pd.Timestamp(ev['date'])
+            for t in old_pf:
+                all_tickers.add(t[0])
+        all_tickers = list(all_tickers)
+
+        data = yf.download(all_tickers, start=entry_date, interval='1d', progress=False)
         if data.empty:
             return None
         close = data['Close'] if 'Close' in data.columns else data
         if isinstance(close, pd.Series):
-            close = close.to_frame(name=tickers[0])
-        total_cost = sum(qty * ep for _, qty, ep in tickers_qty_entry)
+            close = close.to_frame(name=all_tickers[0])
+
+        # Denominator: original cost (old portfolio if SL, else current)
+        if old_pf:
+            total_cost = sum(qty * ep for _, qty, ep in old_pf)
+        else:
+            total_cost = sum(qty * ep for _, qty, ep in tickers_qty_entry)
         if total_cost <= 0:
             return None
+
         daily_vals = []
         for date in close.index:
+            pf = old_pf if (old_pf and sl_date and date < sl_date) else tickers_qty_entry
+
             port_val = 0
-            for tk, qty, ep in tickers_qty_entry:
+            for tk, qty, ep in pf:
                 if tk in close.columns:
                     p = close.loc[date, tk]
                     if pd.notna(p) and p > 0:
@@ -110,7 +134,7 @@ def get_portfolio_daily(tickers_qty_entry, entry_date):
         return None
 
 
-def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio=None):
+def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio=None, sl_events=None):
     st.markdown(f"### vs Benchmarks (since {entry_date})")
     bench = get_bench_data(entry_date, bench_prices)
     cols = st.columns(5)
@@ -122,7 +146,7 @@ def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio=None):
     if bench:
         fig = go.Figure()
         # BERA as line chart (same as benchmarks)
-        bera_daily = get_portfolio_daily(portfolio, entry_date) if portfolio else None
+        bera_daily = get_portfolio_daily(portfolio, entry_date, sl_events=sl_events) if portfolio else None
         if bera_daily is not None:
             fig.add_trace(go.Scatter(
                 x=bera_daily.index, y=bera_daily.values,
@@ -184,6 +208,8 @@ st.sidebar.caption("Updated: 2026-06-15")
 if page == "💰 Core (Live)":
     st.title("Core Portfolio -- Live Trading")
     st.markdown(LIVE['entry_note'])
+    if LIVE.get('sl_warning'):
+        st.warning(LIVE['sl_warning'])
     st.markdown("---")
 
     tickers = [p['ticker'] for p in LIVE['portfolio']]
@@ -220,13 +246,22 @@ if page == "💰 Core (Live)":
     show_charts(df)
     st.markdown("---")
     live_tqe = tuple((p['ticker'], p['qty'], p['entry']) for p in LIVE['portfolio'])
-    show_bench(tpp, LIVE['entry_date'], LIVE['bench'], "Core Live", portfolio=live_tqe)
+    # SL-aware daily chart: use old portfolio before SL date
+    sl_ev = None
+    if LIVE.get('sl_event'):
+        ev = LIVE['sl_event']
+        sl_ev = [{'date': ev['date'],
+                   'old_portfolio': [(s['ticker'], s['qty'], s['entry']) for s in ev['old_portfolio']]}]
+    show_bench(tpp, LIVE['entry_date'], LIVE['bench'], "Core Live",
+               portfolio=live_tqe, sl_events=sl_ev)
 
 
 # ═══ Page: Core A/B ═══
 elif page == "🅰️ Core A/B (Paper)":
     st.title("Core A/B -- Paper Trading")
     st.markdown(CAB['entry_note'])
+    if CAB.get('sl_warning'):
+        st.warning(CAB['sl_warning'])
     st.markdown("---")
 
     all_tickers = list(set(
@@ -305,7 +340,15 @@ elif page == "🅰️ Core A/B (Paper)":
         def_tqe = [(s['ticker'], s['qty'], s['entry']) for s in defense_raw]
         last_tqe = tuple(core_tqe + def_tqe)
 
-    show_bench(last_tpp, CAB['entry_date'], CAB['bench'], "Core A/B", portfolio=last_tqe)
+    # SL-aware daily chart for Core A/B (use Core A + Defense, old portfolio before SL)
+    cab_sl_ev = None
+    if CAB.get('sl_event'):
+        ev = CAB['sl_event']
+        old_core = [(s['ticker'], s['qty'], s['entry']) for s in ev['old_core_a']]
+        old_def = [(s['ticker'], s['qty'], s['entry']) for s in CAB['defense']]
+        cab_sl_ev = [{'date': ev['date'], 'old_portfolio': old_core + old_def}]
+    show_bench(last_tpp, CAB['entry_date'], CAB['bench'], "Core A/B",
+               portfolio=last_tqe, sl_events=cab_sl_ev)
 
 
 # ═══ Page: Satellite Config H ═══

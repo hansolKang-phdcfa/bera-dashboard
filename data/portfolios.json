@@ -7,6 +7,25 @@
     "sl_loss": 345.72,
     "orig_cost": 34984.54,
     "entry_note": "Entry: 2026-05-18 10:30 AM ET | Seed: 50,000,000 KRW | 12 stocks (MLYS SL'd)",
+    "sl_warning": "SL: MLYS 6/8 $26.52 -> $22.50 (-15.2%) | Gap down + vol spike, offering announced | Realized loss: $346",
+    "sl_event": {
+      "date": "2026-06-08",
+      "old_portfolio": [
+        {"ticker": "CYTK", "qty": 57, "entry": 75.148},
+        {"ticker": "NBIX", "qty": 25, "entry": 158.897},
+        {"ticker": "LQDA", "qty": 64, "entry": 56.529},
+        {"ticker": "UTHR", "qty": 7, "entry": 565.10},
+        {"ticker": "DYN",  "qty": 135, "entry": 16.847},
+        {"ticker": "AMRX", "qty": 164, "entry": 11.872},
+        {"ticker": "RCUS", "qty": 94, "entry": 23.81},
+        {"ticker": "XENE", "qty": 42, "entry": 53.616},
+        {"ticker": "CLDX", "qty": 75, "entry": 30.283},
+        {"ticker": "JAZZ", "qty": 9, "entry": 229.117},
+        {"ticker": "TVTX", "qty": 46, "entry": 43.084},
+        {"ticker": "MLYS", "qty": 86, "entry": 26.52},
+        {"ticker": "SYRE", "qty": 26, "entry": 71.073}
+      ]
+    },
     "portfolio": [
       {"ticker": "CYTK", "qty": 59, "entry": 74.902},
       {"ticker": "NBIX", "qty": 26, "entry": 159.059},
@@ -30,6 +49,32 @@
     "sl_loss": 199.80,
     "orig_cost": 46695.63,
     "entry_note": "Entry: 2026-05-28 12:23 PM ET | Seed: $50,000 | Macro 44% Core / 56% Defense",
+    "sl_warning": "SL: MLYS 6/3 $31.10 -> $25.70 (-17.4%) | Gap down + vol 6.9x, $150M offering | Realized loss: $200",
+    "sl_event": {
+      "date": "2026-06-03",
+      "old_core_a": [
+        {"ticker": "AMRX", "qty": 74, "entry": 12.88},
+        {"ticker": "LQDA", "qty": 15, "entry": 62.01},
+        {"ticker": "LLY", "qty": 1, "entry": 1127.32},
+        {"ticker": "BBIO", "qty": 17, "entry": 67.32},
+        {"ticker": "SLNO", "qty": 21, "entry": 53.01},
+        {"ticker": "EXEL", "qty": 21, "entry": 52.66},
+        {"ticker": "ALNY", "qty": 3, "entry": 302.50},
+        {"ticker": "TVTX", "qty": 20, "entry": 47.34},
+        {"ticker": "ERAS", "qty": 92, "entry": 12.57},
+        {"ticker": "XENE", "qty": 21, "entry": 53.92},
+        {"ticker": "GPCR", "qty": 24, "entry": 40.04},
+        {"ticker": "GILD", "qty": 8, "entry": 135.25},
+        {"ticker": "VERA", "qty": 33, "entry": 34.28},
+        {"ticker": "CRSP", "qty": 17, "entry": 55.92},
+        {"ticker": "CYTK", "qty": 15, "entry": 76.80},
+        {"ticker": "RYTM", "qty": 12, "entry": 92.00},
+        {"ticker": "IMVT", "qty": 34, "entry": 33.33},
+        {"ticker": "ZLAB", "qty": 52, "entry": 18.42},
+        {"ticker": "CLDX", "qty": 36, "entry": 31.75},
+        {"ticker": "MLYS", "qty": 37, "entry": 31.10}
+      ]
+    },
     "core_a": [
       {"ticker": "AMRX", "qty": 77, "entry": 12.880},
       {"ticker": "LQDA", "qty": 17, "entry": 61.266},

@@ -31,30 +31,36 @@ BENCH_SYMS = ['XBI', 'IBB', 'SPY', 'QQQ']
 
 @st.cache_data(ttl=300)
 def get_prices_batch(tickers):
-    """Fetch latest prices via yf.download (single API call, avoids rate-limit)."""
+    """Fetch live intraday prices via fast_info.lastPrice (true current price).
+
+    yfinance's daily endpoint can lag for some tickers (NaN on latest day even
+    after the session closes), which would mix stale closes with fresh ones.
+    fast_info.lastPrice goes through Yahoo's quote endpoint and stays current.
+    """
     tickers = list(set(tickers))
     result = {}
-    try:
-        data = yf.download(tickers, period='5d', interval='1d', progress=False)
-        if data.empty:
-            return result
-        close = data['Close'] if 'Close' in data.columns else data
-        if isinstance(close, pd.Series):
-            close = close.to_frame(name=tickers[0])
-        for tk in tickers:
-            if tk in close.columns:
-                vals = close[tk].dropna()
-                if not vals.empty:
-                    result[tk] = float(vals.iloc[-1])
-    except Exception:
-        pass
-    # Fallback for any missing tickers: try individual fast_info
     for tk in tickers:
-        if tk not in result or result[tk] <= 0:
-            try:
-                result[tk] = float(yf.Ticker(tk).fast_info.get('lastPrice', 0))
-            except Exception:
-                pass
+        try:
+            lp = float(yf.Ticker(tk).fast_info.get('lastPrice', 0))
+            if lp > 0:
+                result[tk] = lp
+        except Exception:
+            pass
+    # Last-resort fallback: 5d daily batch, take latest non-NaN
+    missing = [tk for tk in tickers if tk not in result]
+    if missing:
+        try:
+            data = yf.download(missing, period='5d', interval='1d', progress=False)
+            close = data['Close'] if 'Close' in data.columns else data
+            if isinstance(close, pd.Series):
+                close = close.to_frame(name=missing[0])
+            for tk in missing:
+                if tk in close.columns:
+                    vals = close[tk].dropna()
+                    if not vals.empty:
+                        result[tk] = float(vals.iloc[-1])
+        except Exception:
+            pass
     return result
 
 @st.cache_data(ttl=600)
@@ -103,6 +109,22 @@ def get_portfolio_daily(tickers_qty_entry, entry_date, sl_events=None):
         close = data['Close'] if 'Close' in data.columns else data
         if isinstance(close, pd.Series):
             close = close.to_frame(name=all_tickers[0])
+
+        # Latest-day NaN fix: yfinance daily can lag for some tickers; pull
+        # fast_info.lastPrice to fill the last row so today's close is real.
+        if not close.empty:
+            last_date = close.index[-1]
+            for tk in close.columns:
+                v = close.loc[last_date, tk]
+                if pd.isna(v) or v <= 0:
+                    try:
+                        lp = float(yf.Ticker(tk).fast_info.get('lastPrice', 0))
+                        if lp > 0:
+                            close.loc[last_date, tk] = lp
+                    except Exception:
+                        pass
+        # Mid-series NaN: forward-fill from prior close (avoids entry-price spike)
+        close = close.ffill()
 
         # Denominator: original cost (old portfolio if SL, else current)
         if old_pf:

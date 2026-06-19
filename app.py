@@ -70,13 +70,29 @@ def get_bench_data(entry_date, entry_prices):
         ep = entry_prices.get(sym)
         if not ep: continue
         try:
-            hist = yf.Ticker(sym).history(start=entry_date, interval='1d')
-            if not hist.empty:
-                cur = float(hist['Close'].iloc[-1])
-                ret = (cur - ep) / ep * 100
-                normed = (hist['Close'] / ep - 1) * 100
-                result[sym] = {'current': cur, 'ret': ret, 'series': normed}
-        except:
+            t = yf.Ticker(sym)
+            hist = t.history(start=entry_date, interval='1d')
+            if hist.empty: continue
+            close = hist['Close'].dropna()
+            if close.empty: continue
+            # 장중/장외 시간에 daily가 당일 close를 NaN으로 채우는 quirk → fast_info.lastPrice로 패치
+            live = None
+            try:
+                lp = t.fast_info.get('lastPrice')
+                if lp and lp > 0: live = float(lp)
+            except Exception:
+                pass
+            cur = live if live else float(close.iloc[-1])
+            ret = (cur - ep) / ep * 100
+            normed = (close / ep - 1) * 100
+            if live:
+                today = pd.Timestamp.now(tz=close.index.tz).normalize()
+                if today > close.index[-1].normalize():
+                    normed.loc[today] = (live - ep) / ep * 100
+                else:
+                    normed.iloc[-1] = (live - ep) / ep * 100
+            result[sym] = {'current': cur, 'ret': ret, 'series': normed}
+        except Exception:
             pass
     return result
 

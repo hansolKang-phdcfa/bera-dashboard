@@ -172,8 +172,7 @@ def get_portfolio_daily(tickers_qty_entry, entry_date, sl_events=None):
         return None
 
 
-def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio=None, sl_events=None,
-               bera_daily_override=None):
+def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio=None, sl_events=None):
     st.markdown(f"### vs Benchmarks (since {entry_date})")
     bench = get_bench_data(entry_date, bench_prices)
     cols = st.columns(5)
@@ -184,12 +183,8 @@ def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio=None, s
             cols[i+1].metric(sym, f"{r:+.2f}%", delta=f"{total_pnl_pct - r:+.2f}%p")
     if bench:
         fig = go.Figure()
-        # BERA as line chart (same as benchmarks). Override lets callers pass a
-        # precomputed daily equity curve (e.g. SL + redistribution) instead of buy&hold.
-        if bera_daily_override is not None:
-            bera_daily = bera_daily_override
-        else:
-            bera_daily = get_portfolio_daily(portfolio, entry_date, sl_events=sl_events) if portfolio else None
+        # BERA as line chart (same as benchmarks)
+        bera_daily = get_portfolio_daily(portfolio, entry_date, sl_events=sl_events) if portfolio else None
         if bera_daily is not None:
             fig.add_trace(go.Scatter(
                 x=bera_daily.index, y=bera_daily.values,
@@ -230,127 +225,11 @@ def show_charts(df):
         st.plotly_chart(fig, use_container_width=True)
 
 
-@st.cache_data(ttl=900)
-def compute_shared_tracker(tickers, entry_date, sl, vol_mult, drop_th, hold):
-    """Live-replay a past Signal Board snapshot with the real Satellite exit rules.
-
-    Entry = open on entry_date. Daily close-based SL + vol-exit + time-stop, and
-    equal-weight redistribution of freed cash into survivors (fractional shares).
-    Returns (portfolio_ret%, per-name rows, XBI ret%, n_tickers). Mirrors
-    satellite_hybrid_test.py exit logic.
-    """
-    O, C, V = {}, {}, {}
-    for tk in list(tickers) + ['XBI']:
-        try:
-            h = yf.Ticker(tk).history(start='2026-04-20', interval='1d', auto_adjust=True)
-            h = h[['Open', 'Close', 'Volume']].dropna()
-            if not h.empty:
-                O[tk], C[tk], V[tk] = h['Open'], h['Close'], h['Volume']
-        except Exception:
-            pass
-    cl = pd.DataFrame(C).sort_index().ffill()
-    if cl.empty:
-        return None, [], None, 0
-    op = pd.DataFrame(O).reindex(cl.index).ffill()
-    vol = pd.DataFrame(V).reindex(cl.index).ffill()
-    tks = [t for t in tickers if t in cl.columns]
-    days = [d for d in cl.index if str(d.date()) >= entry_date]
-    if not days or not tks:
-        return None, [], None, 0
-    e0 = days[0]
-    entry = {tk: float(op.loc[e0, tk]) for tk in tks}
-
-    val = {tk: 1.0 / len(tks) for tk in tks}
-    alive = set(tks); cash = 0.0
-    status = {tk: '보유' for tk in tks}; exret = {}; expx = {}
-    daily = {}
-    for i, d in enumerate(days):
-        loc_d = cl.index.get_loc(d)
-        pv = cl.index[loc_d - 1]
-        for tk in list(alive):
-            m = (cl.loc[d, tk] / op.loc[d, tk]) if i == 0 else (cl.loc[d, tk] / cl.loc[pv, tk])
-            if np.isfinite(m):
-                val[tk] *= m
-        ex = []
-        for tk in list(alive):
-            pt = cl.loc[d, tk]; ep = entry[tk]; pp = cl.loc[pv, tk]
-            if i + 1 >= hold:
-                ex.append((tk, 'time')); continue
-            if ep > 0 and (pt - ep) / ep <= sl:
-                ex.append((tk, 'SL')); continue
-            vloc = vol.index.get_loc(d)
-            av = vol[tk].iloc[max(0, vloc - 20):vloc].mean()
-            if av > 0 and pp > 0 and vol.loc[d, tk] > av * vol_mult and (pt - pp) / pp <= drop_th:
-                ex.append((tk, 'vol'))
-        if ex:
-            freed = sum(val[tk] for tk, _ in ex)
-            for tk, why in ex:
-                alive.discard(tk); val[tk] = 0.0
-                status[tk] = f"{why}@{str(d.date())[5:]}"
-                exret[tk] = (cl.loc[d, tk] - entry[tk]) / entry[tk] * 100
-                expx[tk] = float(cl.loc[d, tk])
-            if alive:
-                add = freed / len(alive)
-                for tk in alive:
-                    val[tk] += add
-            else:
-                cash += freed
-        daily[d] = (sum(val.values()) + cash - 1) * 100
-    port_ret = (sum(val.values()) + cash - 1) * 100
-
-    last = cl.index[-1]
-    rows = []
-    for tk in tks:
-        if status[tk] != '보유':
-            cur = expx[tk]; r = exret[tk]
-        else:
-            cur = float(cl.loc[last, tk]); r = (cur - entry[tk]) / entry[tk] * 100
-        rows.append({'Ticker': tk, 'Entry': round(entry[tk], 2), 'Current': round(cur, 2),
-                     'PnL%': round(r, 1), '상태': status[tk]})
-    xbi_ret = None
-    if 'XBI' in cl.columns:
-        xbi_ret = (float(cl.loc[last, 'XBI']) / float(op.loc[e0, 'XBI']) - 1) * 100
-    daily_series = pd.Series(daily).sort_index()
-    return port_ret, rows, xbi_ret, len(tks), daily_series
-
-
-def require_terminal_password():
-    """Password-gate the Signal Terminal page only. Marketing pages stay open.
-
-    Reads the shared access code from st.secrets['terminal_password'] (set in the
-    Streamlit Cloud secrets UI / local .streamlit/secrets.toml — never committed).
-    Returns when authenticated; otherwise renders the unlock form and halts the
-    page via st.stop(). Note: this gates the rendered page, not the repo data file.
-    """
-    if st.session_state.get("terminal_ok"):
-        return
-    try:
-        code = st.secrets.get("terminal_password")
-    except Exception:
-        code = None
-    st.title("🛰️ Satellite Signal Terminal")
-    st.caption("기관 투자자 전용 — 접근 코드가 필요합니다.")
-    if not code:
-        st.warning("접근 코드가 설정되지 않았습니다. (관리자: Streamlit secrets의 terminal_password 설정)")
-        st.stop()
-    with st.form("terminal_gate"):
-        pw = st.text_input("접근 코드", type="password")
-        ok = st.form_submit_button("입장")
-    if ok:
-        if pw == code:
-            st.session_state.terminal_ok = True
-            st.rerun()
-        else:
-            st.error("접근 코드가 올바르지 않습니다.")
-    st.stop()
-
-
 # ═══ Sidebar ═══
 st.sidebar.title("BERA")
 st.sidebar.caption("Biotech Event-driven Research & Alpha")
 st.sidebar.markdown("---")
 
-TERMINAL_PAGE = "🛰️ Signal Terminal"
 OVERVIEW_PAGES = ["🧬 Quality Score", "📊 Summary"]
 PORTFOLIO_PAGES = [
     "💰 Core (Live)",
@@ -359,7 +238,6 @@ PORTFOLIO_PAGES = [
     "🏛️ Core v2 (Paper)",
     "📈 종목별 상세",
 ]
-INSTITUTIONAL_PAGES = [TERMINAL_PAGE]
 
 if 'page' not in st.session_state:
     st.session_state.page = "🧬 Quality Score"
@@ -381,10 +259,6 @@ for label in OVERVIEW_PAGES:
 
 st.sidebar.markdown("**Portfolios**")
 for label in PORTFOLIO_PAGES:
-    _nav_button(label)
-
-st.sidebar.markdown("**Institutional** 🔒")
-for label in INSTITUTIONAL_PAGES:
     _nav_button(label)
 
 page = st.session_state.page
@@ -882,10 +756,7 @@ Key observations:
     st.markdown("---")
 
     # Load data
-    # Quality Score = per-ticker mean HINT/optionB clinical SUCCESS probability
-    # over CURRENTLY ACTIVE US trials (re-wired 2026-06-25; was trial_survival
-    # p_completed over all/completed trials). Same column schema.
-    SCORES_PATH = os.path.join(DATA_DIR, 'quality_score_ticker.csv')
+    SCORES_PATH = os.path.join(DATA_DIR, 'quality_score_ticker.csv')  # HINT/optionB success prob, active-only (re-wired 2026-06-25)
     UNIVERSE_PATH = os.path.join(DATA_DIR, 'universe.csv')
 
     try:
@@ -1052,142 +923,3 @@ trials begin.
 
     st.markdown("---")
     st.caption("Quality Score = mean predicted success probability of currently active clinical trials per company. Updated quarterly.")
-
-
-# ═══ Page: Satellite Signal Terminal (Institutional, password-gated) ═══
-elif page == TERMINAL_PAGE:
-    require_terminal_password()
-
-    with open(os.path.join(DATA_DIR, 'signals.json'), 'r', encoding='utf-8') as f:
-        SIG = json.load(f)
-
-    st.title("🛰️ Satellite Signal Terminal")
-    st.caption(
-        f"기관 전용 · 시그널 기준일 {SIG['run_date']} · "
-        f"보드 최종 업데이트 {SIG.get('generated_at', '—')} · 소형·중형 바이오텍 이벤트 드리븐"
-    )
-    st.markdown(
-        "SEC/FINRA 공시 기반 바이오 헤지펀드·내부자·숏 시그널을 종합해 격주(2주마다) 갱신되는 "
-        "Strong Buy 후보 보드입니다. 종목·시그널 유형·신선도는 공개하되, "
-        "배점·임계치·펀드명 등 재현 정보는 비공개입니다."
-    )
-
-    tc = SIG.get('tier_counts', {})
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Strong Buy", tc.get('Strong Buy', 0))
-    c2.metric("Buy", tc.get('Buy', 0))
-    c3.metric("Watch", tc.get('Watch', 0))
-    c4.metric("보드 발행", SIG.get('published_count', 0))
-
-    st.markdown("---")
-    st.markdown("### Live Signal Board — Strong Buy")
-    st.caption("종합 conviction 최상위 등급. 신선도 순 정렬. (종합점수 비공개)")
-
-    board = pd.DataFrame([{
-        'Ticker': s['ticker'],
-        '시그널 믹스': ' · '.join(s['tags']),
-        '보유 펀드': s['smart_money'],
-        '신선도': s['freshness'],
-    } for s in SIG['signals']])
-    st.dataframe(board, use_container_width=True, hide_index=True,
-                 height=min(len(board) * 36 + 40, 760))
-
-    st.markdown(
-        "**시그널 범례** — ⭐ Cross(기관+내부자 동시, 가장 강한 시그널) · "
-        "💰 바이오 헤지펀드 보유 · 🏦 기관 축적 · 👤 내부자 집중매수 · ⚡ 숏스퀴즈 셋업"
-    )
-
-    with st.expander("How it works — 시그널 소스 & 진입 타이밍 (개념)"):
-        st.markdown("""
-4종 공시 시그널(기관 지분, 내부자 매수, 공매도, 분기 기관 보유 변화)을 종합한 뒤,
-시그널 성격에 맞춰 진입 시점을 달리합니다.
-
-- 기관 지분: 바이오 헤지펀드가 포지션을 잡았지만 주가는 아직 반응하지 않은 종목에 진입.
-- 공매도 · 내부자 매수: 빠르게 반영되는 시그널이라 공시 직후 진입.
-- Cross: 기관 지분과 내부자 매수가 함께 잡히는, 가장 확신이 높은 케이스.
-- 임상 AI: 모든 후보에 베라의 임상 성공확률 예측을 함께 반영합니다.
-
-퇴출은 손절 · 급락 · 보유기간 규율로 관리합니다. 세부 기준은 비공개입니다.
-""")
-
-    # ── Live paper portfolio (track record / proof) ──
-    st.markdown("---")
-    st.markdown("### Live Paper Portfolio — 실시간 트랙레코드")
-    st.caption(
-        f"진입 {SAT['entry_date']} · 시드 ${SAT['seed_usd']:,} · "
-        "전 종목 바이오 헤지펀드 보유 시그널 진입 · 임상필터 통과"
-    )
-
-    sat_tickers = [p['ticker'] for p in SAT['portfolio']]
-    sat_prices = get_prices_batch(sat_tickers)
-    prows = []
-    for p in SAT['portfolio']:
-        cur = sat_prices.get(p['ticker'], p['entry'])
-        if cur <= 0:
-            cur = p['entry']
-        qty = int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry'])
-        cost = qty * p['entry']
-        pnl = qty * cur - cost
-        prows.append({
-            'Ticker': p['ticker'], 'Weight': f"{p['weight_pct']}%",
-            '임상필터': '✓ pass',
-            'PnL%': pnl / cost * 100 if cost > 0 else 0,
-        })
-    pdf = pd.DataFrame(prows)
-    st.dataframe(
-        pdf.style.format({'PnL%': '{:+.1f}%'}).map(
-            lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
-                      ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
-            subset=['PnL%']),
-        use_container_width=True, hide_index=True)
-
-    sat_tqe = tuple((p['ticker'], int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry']), p['entry'])
-                    for p in SAT['portfolio'])
-    sat_cost = sum(q * e for _, q, e in sat_tqe)
-    sat_val = sum(sat_prices.get(t, e) * q for t, q, e in sat_tqe)
-    sat_pnl_pct = (sat_val / sat_cost - 1) * 100 if sat_cost > 0 else 0
-    show_bench(sat_pnl_pct, SAT['entry_date'], SAT['bench'], "Satellite", portfolio=sat_tqe)
-
-    # ── Second live paper portfolio: 2026-05-25 shared picks (5/26 open entry, SL-25% + redistribution) ──
-    ST = PF.get('shared_tracker')
-    if ST:
-        st.markdown("---")
-        st.markdown("### Live Paper Portfolio — 2026-05-25 추천종목")
-        st.caption(
-            f"진입 {ST['entry_date']} 시초가 · {len(ST['tickers'])}종목 동일가중 · "
-            f"SL {int(ST['sl']*100)}% + 동일비중 재분배"
-        )
-        pr, trows, xbi_ret, n, daily_series = compute_shared_tracker(
-            tuple(ST['tickers']), ST['entry_date'], ST['sl'], ST['vol_mult'], ST['drop_th'], ST['hold'])
-        if pr is not None:
-            held = [r for r in trows if r['상태'] == '보유']
-            exited = [r for r in trows if r['상태'] != '보유']
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Portfolio", f"{pr:+.2f}%")
-            c2.metric("보유 / 손절", f"{len(held)} / {len(exited)}")
-            c3.metric("Entry", ST['entry_date'])
-
-            # SL'd names: shown as a notice (like Core Live), removed from the table.
-            if exited:
-                parts = []
-                for r in exited:
-                    why, _, dt = r['상태'].partition('@')
-                    parts.append(f"{r['Ticker']} {r['PnL%']:+.1f}% ({why} {dt})")
-                st.warning("🛑 손절 (포트폴리오 수익률에 이미 반영됨): " + " · ".join(parts))
-
-            if held:
-                hdf = pd.DataFrame(held)[['Ticker', 'Entry', 'Current', 'PnL%']]
-                st.dataframe(
-                    hdf.style.format({'Entry': '${:.2f}', 'Current': '${:.2f}', 'PnL%': '{:+.1f}%'}).map(
-                        lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
-                                  ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
-                        subset=['PnL%']),
-                    use_container_width=True, hide_index=True)
-
-            show_bench(pr, ST['entry_date'], ST['bench'], "추천종목", bera_daily_override=daily_series)
-            st.caption("※ 표본 기간이 짧은 단기·소형주 변동성 구간입니다. 누적 기간이 길어질수록 벤치마크 비교 의미가 커집니다.")
-        else:
-            st.info("트래커 데이터를 불러오지 못했습니다.")
-
-    st.markdown("---")
-    st.caption("BERA Satellite Signal Terminal · 기관 전용 · 무단 배포 금지")

@@ -204,10 +204,11 @@ def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio=None, s
                 fig.add_trace(go.Scatter(x=s.index, y=s.values,
                     name=f"{sym} ({bench[sym]['ret']:+.1f}%)",
                     line=dict(color=clr.get(sym, 'gray'), width=2)))
-        fig.update_layout(title=f'Cumulative Return since {entry_date}',
-                          yaxis_title='Return (%)', height=380,
+        fig.update_layout(yaxis_title='Return (%)', height=380,
                           hovermode='x unified',
+                          margin=dict(t=30),
                           legend=dict(orientation="h", yanchor="bottom", y=1.02))
+        st.caption(f"Cumulative Return since {entry_date}")
         st.plotly_chart(fig, use_container_width=True)
 
 

@@ -236,6 +236,7 @@ PORTFOLIO_PAGES = [
     "🅰️ Core A/B (Paper)",
     "🎯 Satellite v2 (Paper)",
     "🏛️ Core v2 (Paper)",
+    "📈 종목별 상세",
 ]
 
 if 'page' not in st.session_state:
@@ -506,6 +507,91 @@ elif page == "🏛️ Core v2 (Paper)":
     st.markdown("---")
     cnew_tqe = tuple((p['ticker'], max(1, int(CNEW['seed_usd'] * p['weight_mult'] / total_mult / p['entry'])), p['entry']) for p in CNEW['portfolio'])
     show_bench(tpp, CNEW['entry_date'], CNEW['bench'], "Core v2", portfolio=cnew_tqe)
+
+
+# ═══ Page: 종목별 상세 (Per-stock Detail) ═══
+elif page == "📈 종목별 상세":
+    st.title("종목별 상세")
+    st.caption("포트폴리오 보유 종목의 3개월 캔들차트와 진입가 대비 현재 손익")
+    st.markdown("---")
+
+    # ── 전 포트폴리오 포지션 통합 (대시보드에 표시되는 종목들) ──
+    cnew_total_mult = sum(p['weight_mult'] for p in CNEW['portfolio'])
+    positions = {
+        "💰 Core (Live)": [
+            {'ticker': p['ticker'], 'qty': p['qty'], 'entry': p['entry']}
+            for p in LIVE['portfolio']
+        ],
+        "🅰️ Core A (Paper)": [
+            {'ticker': s['ticker'], 'qty': s['qty'], 'entry': s['entry']}
+            for s in CAB['core_a']
+        ],
+        "🅱️ Core B (Paper)": [
+            {'ticker': s['ticker'], 'qty': s['qty'], 'entry': s['entry']}
+            for s in CAB['core_b']
+        ],
+        "🛡️ Defense (A/B)": [
+            {'ticker': s['ticker'], 'qty': s['qty'], 'entry': s['entry']}
+            for s in CAB['defense']
+        ],
+        "🎯 Satellite v2": [
+            {'ticker': p['ticker'],
+             'qty': int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry']),
+             'entry': p['entry']}
+            for p in SAT['portfolio']
+        ],
+        "🏛️ Core v2": [
+            {'ticker': p['ticker'],
+             'qty': max(1, int(CNEW['seed_usd'] * p['weight_mult'] / cnew_total_mult / p['entry'])),
+             'entry': p['entry']}
+            for p in CNEW['portfolio']
+        ],
+    }
+
+    csel1, csel2 = st.columns(2)
+    pf_label = csel1.selectbox("포트폴리오", list(positions.keys()))
+    pf_positions = positions[pf_label]
+    selected = csel2.selectbox("종목", [p['ticker'] for p in pf_positions])
+
+    pos = next(p for p in pf_positions if p['ticker'] == selected)
+    qty, entry = pos['qty'], pos['entry']
+
+    cur = get_prices_batch([selected]).get(selected, entry)
+    if cur <= 0:
+        cur = entry
+    cost = qty * entry
+    val = qty * cur
+    pnl = val - cost
+    pnl_pct = pnl / cost * 100 if cost > 0 else 0
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("종목", selected)
+    m2.metric("수량", f"{qty}주")
+    m3.metric("평가금액", f"${val:,.0f}")
+    m4.metric("손익", f"${pnl:+,.0f}", delta=f"{pnl_pct:+.2f}%")
+
+    st.markdown(f"**{pf_label}** · 진입가 ${entry:,.2f} · 현재가 ${cur:,.2f}")
+
+    # ── 3개월 캔들차트 + 진입가 기준선 ──
+    try:
+        hist = yf.Ticker(selected).history(period='3mo')
+        if not hist.empty:
+            fig = go.Figure()
+            fig.add_trace(go.Candlestick(
+                x=hist.index, open=hist['Open'], high=hist['High'],
+                low=hist['Low'], close=hist['Close'], name=selected,
+            ))
+            fig.add_hline(y=entry, line_dash="dash", line_color="#1976D2",
+                          annotation_text=f"진입가 ${entry:,.2f}",
+                          annotation_position="top left")
+            fig.update_layout(title=f"{selected} — 3M Chart",
+                              xaxis_rangeslider_visible=False,
+                              height=460, margin=dict(t=40))
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("차트 데이터를 불러오지 못했습니다.")
+    except Exception as e:
+        st.warning(f"차트 로딩 실패: {e}")
 
 
 # ═══ Page: Summary ═══

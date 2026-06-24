@@ -161,5 +161,15 @@
       {"ticker": "ABBV", "weight_mult": 1.5, "entry": 227.26, "prob": 0.638},
       {"ticker": "ARQT", "weight_mult": 1.0, "entry": 21.22, "prob": 0.560}
     ]
+  },
+  "shared_tracker": {
+    "share_date": "2026-05-25",
+    "entry_date": "2026-05-26",
+    "sl": -0.25,
+    "vol_mult": 3.0,
+    "drop_th": -0.07,
+    "hold": 120,
+    "bench": {"XBI": 132.34, "IBB": 169.73, "SPY": 748.08, "QQQ": 725.16},
+    "tickers": ["TRDA","IKT","KRRO","TENX","BDSX","ARTV","LENZ","ALXO","OBIO","TNXP","ALEC","SRZN","STRO","ABCL","CMPX"]
   }
 }

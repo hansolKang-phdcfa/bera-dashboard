@@ -1,0 +1,9 @@
+# Streamlit secrets — terminal access code. NEVER commit.
+.streamlit/secrets.toml
+
+# Institutional signal board — served via Streamlit Secrets (signals_json), never the repo.
+data/signals.json
+
+# Python
+__pycache__/
+*.pyc

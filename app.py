@@ -314,37 +314,6 @@ def compute_shared_tracker(tickers, entry_date, sl, vol_mult, drop_th, hold):
     return port_ret, rows, xbi_ret, len(tks), daily_series
 
 
-def require_terminal_password():
-    """Password-gate the Signal Terminal page only. Marketing pages stay open.
-
-    Reads the shared access code from st.secrets['terminal_password'] (set in the
-    Streamlit Cloud secrets UI / local .streamlit/secrets.toml — never committed).
-    Returns when authenticated; otherwise renders the unlock form and halts the
-    page via st.stop(). Note: this gates the rendered page, not the repo data file.
-    """
-    if st.session_state.get("terminal_ok"):
-        return
-    try:
-        code = st.secrets.get("terminal_password")
-    except Exception:
-        code = None
-    st.title("🛰️ Satellite Signal Terminal")
-    st.caption("기관 투자자 전용 — 접근 코드가 필요합니다.")
-    if not code:
-        st.warning("접근 코드가 설정되지 않았습니다. (관리자: Streamlit secrets의 terminal_password 설정)")
-        st.stop()
-    with st.form("terminal_gate"):
-        pw = st.text_input("접근 코드", type="password")
-        ok = st.form_submit_button("입장")
-    if ok:
-        if pw == code:
-            st.session_state.terminal_ok = True
-            st.rerun()
-        else:
-            st.error("접근 코드가 올바르지 않습니다.")
-    st.stop()
-
-
 # ═══ Sidebar ═══
 st.sidebar.title("BERA")
 st.sidebar.caption("Biotech Event-driven Research & Alpha")
@@ -383,9 +352,18 @@ st.sidebar.markdown("**Portfolios**")
 for label in PORTFOLIO_PAGES:
     _nav_button(label)
 
-st.sidebar.markdown("**Institutional** 🔒")
-for label in INSTITUTIONAL_PAGES:
-    _nav_button(label)
+# Institutional section is hidden unless the URL carries ?institutional
+# (e.g. bera-dashboard.streamlit.app/?institutional). Without it, visitors
+# never learn the Signal Terminal exists. Streamlit Cloud has no real path
+# routing, so a query param stands in for the "/institutional" entry point.
+_inst_unlocked = "institutional" in st.query_params
+if _inst_unlocked:
+    st.sidebar.markdown("**Institutional** 🔒")
+    for label in INSTITUTIONAL_PAGES:
+        _nav_button(label)
+elif st.session_state.page in INSTITUTIONAL_PAGES:
+    # Stale session landed on the terminal without the unlock param — bounce out.
+    st.session_state.page = "🧬 Quality Score"
 
 page = st.session_state.page
 
@@ -1054,9 +1032,11 @@ trials begin.
     st.caption("Quality Score = mean predicted success probability of currently active clinical trials per company. Updated quarterly.")
 
 
-# ═══ Page: Satellite Signal Terminal (Institutional, password-gated) ═══
+# ═══ Page: Satellite Signal Terminal (Institutional, URL-gated) ═══
 elif page == TERMINAL_PAGE:
-    require_terminal_password()
+    # No password. The gate is the ?institutional URL itself: visitors without it
+    # never see this page exists (sidebar section is hidden + stale sessions bounce
+    # out above). Shared deliberately with relationship-stage contacts only.
 
     # Signal board is institutional data — served from Streamlit Secrets, NOT the
     # (public) repo. Local dev falls back to data/signals.json (gitignored).

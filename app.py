@@ -1178,5 +1178,45 @@ elif page == TERMINAL_PAGE:
         else:
             st.info("트래커 데이터를 불러오지 못했습니다.")
 
+    # ── Third live paper portfolio: 2026-06-25 Strong Buy board (6/25 open entry, SL-30% + redistribution, 오래됨 제외) ──
+    SB = PF.get('strong_buy_tracker')
+    if SB:
+        st.markdown("---")
+        st.markdown("### Live Paper Portfolio — 2026-06-25 추천종목 (Strong Buy)")
+        st.caption(
+            f"진입 {SB['entry_date']} 시초가 · {len(SB['tickers'])}종목 동일가중 · "
+            f"SL {int(SB['sl']*100)}% 종가기준 + 생존종목 동일비중 재분배 · {SB.get('exclude_note', '')}"
+        )
+        pr, trows, xbi_ret, n, daily_series = compute_shared_tracker(
+            tuple(SB['tickers']), SB['entry_date'], SB['sl'], SB['vol_mult'], SB['drop_th'], SB['hold'])
+        if pr is not None:
+            held = [r for r in trows if r['상태'] == '보유']
+            exited = [r for r in trows if r['상태'] != '보유']
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Portfolio", f"{pr:+.2f}%")
+            c2.metric("보유 / 손절", f"{len(held)} / {len(exited)}")
+            c3.metric("Entry", SB['entry_date'])
+
+            if exited:
+                parts = []
+                for r in exited:
+                    why, _, dt = r['상태'].partition('@')
+                    parts.append(f"{r['Ticker']} {r['PnL%']:+.1f}% ({why} {dt})")
+                st.warning("🛑 손절 (포트폴리오 수익률에 이미 반영됨): " + " · ".join(parts))
+
+            if held:
+                hdf = pd.DataFrame(held)[['Ticker', 'Entry', 'Current', 'PnL%']]
+                st.dataframe(
+                    hdf.style.format({'Entry': '${:.2f}', 'Current': '${:.2f}', 'PnL%': '{:+.1f}%'}).map(
+                        lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
+                                  ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
+                        subset=['PnL%']),
+                    use_container_width=True, hide_index=True)
+
+            show_bench(pr, SB['entry_date'], SB['bench'], "추천종목", bera_daily_override=daily_series)
+            st.caption("※ 표본 기간이 짧은 단기·소형주 변동성 구간입니다. 누적 기간이 길어질수록 벤치마크 비교 의미가 커집니다.")
+        else:
+            st.info("트래커 데이터를 불러오지 못했습니다.")
+
     st.markdown("---")
     st.caption("BERA Satellite Signal Terminal · 기관 전용 · 무단 배포 금지")

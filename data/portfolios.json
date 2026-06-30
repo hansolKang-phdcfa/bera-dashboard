@@ -171,5 +171,16 @@
     "hold": 120,
     "bench": {"XBI": 132.34, "IBB": 169.73, "SPY": 748.08, "QQQ": 725.16},
     "tickers": ["TRDA","IKT","KRRO","TENX","BDSX","ARTV","LENZ","ALXO","OBIO","TNXP","ALEC","SRZN","STRO","ABCL","CMPX"]
+  },
+  "strong_buy_tracker": {
+    "board_date": "2026-06-25",
+    "entry_date": "2026-06-25",
+    "sl": -0.30,
+    "vol_mult": 99999.0,
+    "drop_th": -9.99,
+    "hold": 99999,
+    "bench": {"XBI": 149.89, "IBB": 182.17, "SPY": 738.91, "QQQ": 725.90},
+    "exclude_note": "❄ 오래됨(>180d) 신선도 종목(CRVO/RANI/PDSB) 제외",
+    "tickers": ["OKUR","TRDA","ACRV","ARTV","MGNX","OBIO","ADGM","AEMD","ALDX","ALXO","APRE","APUS","ATRA","BDSX","CERS","CLRB","CMPX","COCH","EDSA","GUTS","HCWB","IBIO","IKT","IMA","KRRO","MBRX","NSPR","OCUL","PEPG","PHGE","QNRX","QUCY","REVB","TRAW","VSEE","ABCL","PMN","LENZ","ALEC","ARVN","TECX","CBIO","BNTC","BMEA","ICU"]
   }
 }

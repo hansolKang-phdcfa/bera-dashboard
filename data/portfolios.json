@@ -180,7 +180,7 @@
     "drop_th": -9.99,
     "hold": 99999,
     "bench": {"XBI": 149.89, "IBB": 182.17, "SPY": 738.91, "QQQ": 725.90},
-    "exclude_note": "❄ 오래됨(>180d) 신선도 종목(CRVO/RANI/PDSB) 제외",
-    "tickers": ["OKUR","TRDA","ACRV","ARTV","MGNX","OBIO","ADGM","AEMD","ALDX","ALXO","APRE","APUS","ATRA","BDSX","CERS","CLRB","CMPX","COCH","EDSA","GUTS","HCWB","IBIO","IKT","IMA","KRRO","MBRX","NSPR","OCUL","PEPG","PHGE","QNRX","QUCY","REVB","TRAW","VSEE","ABCL","PMN","LENZ","ALEC","ARVN","TECX","CBIO","BNTC","BMEA","ICU"]
+    "exclude_note": "❄ 오래됨(>180d) 제외 + 투자가능 게이트(시총 ≥$100M & 주가 ≥$1) 적용",
+    "tickers": ["OKUR","TRDA","ARTV","MGNX","OBIO","ALDX","ALXO","ATRA","BDSX","CERS","CMPX","IKT","KRRO","OCUL","PEPG","ABCL","LENZ","ALEC","ARVN","TECX","CBIO","BNTC","BMEA"]
   }
 }

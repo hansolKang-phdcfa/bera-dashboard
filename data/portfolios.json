@@ -3,7 +3,7 @@
     "entry_date": "2026-05-18",
     "seed_krw": 50000000,
     "seed_usd": 35000,
-    "bench": {"XBI": 129.64, "IBB": 165.25, "SPY": 739.57, "QQQ": 707.26},
+    "bench": {"XBI": 129.64, "IBB": 165.25, "SPY": 739.57, "QQQ": 707.26, "SOXX": 498.08},
     "sl_loss": 345.72,
     "orig_cost": 34984.54,
     "entry_note": "Entry: 2026-05-18 10:30 AM ET | Seed: 50,000,000 KRW | 12 stocks (MLYS SL'd)",

@@ -25,8 +25,6 @@ CAB = PF['core_ab']
 SAT = PF['satellite']
 CNEW = PF['core_new']
 
-BENCH_SYMS = ['XBI', 'IBB', 'SPY', 'QQQ']
-
 # ═══ Helpers ═══
 
 @st.cache_data(ttl=300)
@@ -65,9 +63,10 @@ def get_prices_batch(tickers):
 
 @st.cache_data(ttl=600)
 def get_bench_data(entry_date, entry_prices):
+    # Data-driven: iterate whatever benchmarks the portfolio's bench dict carries,
+    # so a portfolio can add its own (e.g. Core Live adds SOXX) via portfolios.json.
     result = {}
-    for sym in BENCH_SYMS:
-        ep = entry_prices.get(sym)
+    for sym, ep in entry_prices.items():
         if not ep: continue
         try:
             t = yf.Ticker(sym)
@@ -176,9 +175,10 @@ def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio=None, s
                bera_daily_override=None):
     st.markdown(f"### vs Benchmarks (since {entry_date})")
     bench = get_bench_data(entry_date, bench_prices)
-    cols = st.columns(5)
+    syms = list(bench_prices.keys())
+    cols = st.columns(1 + len(syms))
     cols[0].metric(f"BERA {label}", f"{total_pnl_pct:+.2f}%")
-    for i, sym in enumerate(BENCH_SYMS):
+    for i, sym in enumerate(syms):
         if sym in bench:
             r = bench[sym]['ret']
             cols[i+1].metric(sym, f"{r:+.2f}%", delta=f"{total_pnl_pct - r:+.2f}%p")
@@ -202,8 +202,9 @@ def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio=None, s
             fig.add_hline(y=total_pnl_pct, line_dash="solid", line_color="#1976D2",
                           annotation_text=f"BERA {total_pnl_pct:+.1f}%", annotation_position="bottom right")
         fig.add_hline(y=0, line_dash="dot", line_color="gray")
-        clr = {'XBI': '#E53935', 'IBB': '#FB8C00', 'SPY': '#43A047', 'QQQ': '#7B1FA2'}
-        for sym in BENCH_SYMS:
+        clr = {'XBI': '#E53935', 'IBB': '#FB8C00', 'SPY': '#43A047', 'QQQ': '#7B1FA2',
+               'SOXX': '#00838F'}
+        for sym in syms:
             if sym in bench:
                 s = bench[sym]['series']
                 fig.add_trace(go.Scatter(x=s.index, y=s.values,

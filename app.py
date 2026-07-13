@@ -10,12 +10,8 @@ import numpy as np
 import yfinance as yf
 import plotly.express as px
 import plotly.graph_objects as go
-import json, os, warnings
+import json, os
 from datetime import datetime, timedelta
-
-# Plotly/Streamlit deprecation 안내 문구 억제 (동작 무관, 화면 노이즈만 제거)
-warnings.filterwarnings("ignore", message=".*keyword arguments have been deprecated.*")
-warnings.filterwarnings("ignore", message=".*Use config instead.*")
 
 st.set_page_config(page_title="BERA Trading", page_icon="🧬", layout="wide")
 
@@ -219,20 +215,20 @@ def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio=None, s
                           margin=dict(t=30),
                           legend=dict(orientation="h", yanchor="bottom", y=1.02))
         st.caption(f"Cumulative Return since {entry_date}")
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, use_container_width=True)
 
 
 def show_charts(df):
     col_a, col_b = st.columns(2)
     with col_a:
         fig = px.pie(df, values='Value', names='Ticker', title='Weight', hole=0.4)
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, use_container_width=True)
     with col_b:
         s = df.sort_values('PnL%')
         colors = ['#2ecc71' if v >= 0 else '#e74c3c' for v in s['PnL%']]
         fig = go.Figure(go.Bar(x=s['PnL%'], y=s['Ticker'], orientation='h', marker_color=colors))
         fig.update_layout(title='PnL (%)', xaxis_title='%')
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, use_container_width=True)
 
 
 @st.cache_data(ttl=900)
@@ -696,7 +692,7 @@ elif page == "📈 종목별 상세":
             fig.update_layout(title=f"{selected} — 3M Chart",
                               xaxis_rangeslider_visible=False,
                               height=460, margin=dict(t=40))
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("차트 데이터를 불러오지 못했습니다.")
     except Exception as e:
@@ -853,7 +849,7 @@ market cap $2B+, equal-weighted, quarterly rebalancing. Period: Jan 2019 — May
         legend=dict(orientation="h", yanchor="bottom", y=1.02),
     )
     fig_annual.add_hline(y=0, line_dash="dot", line_color="gray")
-    st.plotly_chart(fig_annual, width='stretch')
+    st.plotly_chart(fig_annual, use_container_width=True)
 
     st.markdown("""
 Key observations:
@@ -943,7 +939,7 @@ Later phases (P2/P3) converge toward the mean as more clinical evidence accumula
             title='Distribution by Phase (Box Plot)',
         )
         fig_box.update_layout(showlegend=False, yaxis_title='Quality Score', height=400)
-        st.plotly_chart(fig_box, width='stretch')
+        st.plotly_chart(fig_box, use_container_width=True)
 
     with col_hist:
         fig_hist = px.histogram(
@@ -954,7 +950,7 @@ Later phases (P2/P3) converge toward the mean as more clinical evidence accumula
             title='Distribution by Phase (Histogram)',
         )
         fig_hist.update_layout(yaxis_title='Count', height=400)
-        st.plotly_chart(fig_hist, width='stretch')
+        st.plotly_chart(fig_hist, use_container_width=True)
 
     # Phase stats table
     phase_stats = phase_df.groupby('Phase').agg(
@@ -995,7 +991,7 @@ trials begin.
             color_discrete_map={'P1': '#3498db', 'P2': '#f39c12', 'P3': '#2ecc71'},
             hole=0.4,
         )
-        st.plotly_chart(fig_pie, width='stretch')
+        st.plotly_chart(fig_pie, use_container_width=True)
 
     with col_bar:
         coverage = pd.DataFrame({
@@ -1012,7 +1008,7 @@ trials begin.
             title=f'Universe Coverage ({universe_total} total)',
         )
         fig_cov.update_layout(showlegend=False, height=400)
-        st.plotly_chart(fig_cov, width='stretch')
+        st.plotly_chart(fig_cov, use_container_width=True)
 
     # Trials distribution
     st.markdown("#### Trial Count Distribution")
@@ -1031,7 +1027,7 @@ trials begin.
         yaxis_title='Number of Companies',
         height=350,
     )
-    st.plotly_chart(fig_trials, width='stretch')
+    st.plotly_chart(fig_trials, use_container_width=True)
 
     st.markdown("---")
     st.caption("Quality Score = mean predicted success probability of currently active clinical trials per company. Updated quarterly.")

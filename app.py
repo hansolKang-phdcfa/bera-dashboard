@@ -17,7 +17,7 @@ st.set_page_config(page_title="BERA Trading", page_icon="🧬", layout="wide")
 
 # ═══ Load Portfolio Data from JSON ═══
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-with open(os.path.join(DATA_DIR, 'portfolios.json'), 'r') as f:
+with open(os.path.join(DATA_DIR, 'portfolios.json'), 'r', encoding='utf-8') as f:
     PF = json.load(f)
 
 LIVE = PF['core_live']

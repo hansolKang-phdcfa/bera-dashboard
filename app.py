@@ -10,8 +10,12 @@ import numpy as np
 import yfinance as yf
 import plotly.express as px
 import plotly.graph_objects as go
-import json, os
+import json, os, warnings
 from datetime import datetime, timedelta
+
+# Plotly/Streamlit deprecation 안내 문구 억제 (동작 무관, 화면 노이즈만 제거)
+warnings.filterwarnings("ignore", message=".*keyword arguments have been deprecated.*")
+warnings.filterwarnings("ignore", message=".*Use config instead.*")
 
 st.set_page_config(page_title="BERA Trading", page_icon="🧬", layout="wide")
 

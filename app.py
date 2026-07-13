@@ -215,20 +215,20 @@ def show_bench(total_pnl_pct, entry_date, bench_prices, label, portfolio=None, s
                           margin=dict(t=30),
                           legend=dict(orientation="h", yanchor="bottom", y=1.02))
         st.caption(f"Cumulative Return since {entry_date}")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 def show_charts(df):
     col_a, col_b = st.columns(2)
     with col_a:
         fig = px.pie(df, values='Value', names='Ticker', title='Weight', hole=0.4)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     with col_b:
         s = df.sort_values('PnL%')
         colors = ['#2ecc71' if v >= 0 else '#e74c3c' for v in s['PnL%']]
         fig = go.Figure(go.Bar(x=s['PnL%'], y=s['Ticker'], orientation='h', marker_color=colors))
         fig.update_layout(title='PnL (%)', xaxis_title='%')
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 @st.cache_data(ttl=900)
@@ -340,7 +340,7 @@ def _nav(p):
 def _nav_button(label):
     is_current = st.session_state.page == label
     st.sidebar.button(
-        label, use_container_width=True,
+        label, width='stretch',
         type="primary" if is_current else "secondary",
         on_click=_nav, args=(label,), key=f"nav_{label}",
     )
@@ -411,7 +411,7 @@ if page == "💰 Core (Live)":
     }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
                 ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
                 subset=['PnL','PnL%']),
-        use_container_width=True, hide_index=True)
+        width='stretch', hide_index=True)
 
     show_charts(df)
     st.markdown("---")
@@ -491,10 +491,10 @@ elif page == "🅰️ Core A/B (Paper)":
         tab1, tab2 = st.tabs(["Core", "Defense"])
         with tab1:
             st.dataframe(cdf.sort_values('PnL%', ascending=False).style.format(fmt).map(style_fn, subset=['PnL','PnL%']),
-                use_container_width=True, hide_index=True)
+                width='stretch', hide_index=True)
         with tab2:
             st.dataframe(ddf.sort_values('PnL%', ascending=False).style.format(fmt).map(style_fn, subset=['PnL','PnL%']),
-                use_container_width=True, hide_index=True)
+                width='stretch', hide_index=True)
 
         # Aggregate duplicate tickers (GILD, LLY in both Core & Defense) for charts
         chart_df = combined.groupby('Ticker', as_index=False).agg({
@@ -559,7 +559,7 @@ elif page == "🎯 Satellite v2 (Paper)":
     }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
                 ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
                 subset=['PnL','PnL%']),
-        use_container_width=True, hide_index=True)
+        width='stretch', hide_index=True)
 
     show_charts(df)
     st.markdown("---")
@@ -606,7 +606,7 @@ elif page == "🏛️ Core v2 (Paper)":
     }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
                 ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
                 subset=['PnL','PnL%']),
-        use_container_width=True, hide_index=True)
+        width='stretch', hide_index=True)
 
     show_charts(df)
     st.markdown("---")
@@ -692,7 +692,7 @@ elif page == "📈 종목별 상세":
             fig.update_layout(title=f"{selected} — 3M Chart",
                               xaxis_rangeslider_visible=False,
                               height=460, margin=dict(t=40))
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         else:
             st.warning("차트 데이터를 불러오지 못했습니다.")
     except Exception as e:
@@ -771,7 +771,7 @@ elif page == "📊 Summary":
     }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
                 ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
                 subset=['PnL','PnL%']),
-        use_container_width=True, hide_index=True)
+        width='stretch', hide_index=True)
 
     # Total
     total_val = sdf['Value'].sum()
@@ -849,7 +849,7 @@ market cap $2B+, equal-weighted, quarterly rebalancing. Period: Jan 2019 — May
         legend=dict(orientation="h", yanchor="bottom", y=1.02),
     )
     fig_annual.add_hline(y=0, line_dash="dot", line_color="gray")
-    st.plotly_chart(fig_annual, use_container_width=True)
+    st.plotly_chart(fig_annual, width='stretch')
 
     st.markdown("""
 Key observations:
@@ -914,7 +914,7 @@ Key observations:
 
     st.dataframe(
         top_df.style.format({'Quality Score': '{:.3f}'}).map(color_score, subset=['Quality Score']),
-        use_container_width=True, height=min(top_n * 38 + 40, 800),
+        width='stretch', height=min(top_n * 38 + 40, 800),
     )
 
     # ── Section 3: Phase Distribution ──
@@ -939,7 +939,7 @@ Later phases (P2/P3) converge toward the mean as more clinical evidence accumula
             title='Distribution by Phase (Box Plot)',
         )
         fig_box.update_layout(showlegend=False, yaxis_title='Quality Score', height=400)
-        st.plotly_chart(fig_box, use_container_width=True)
+        st.plotly_chart(fig_box, width='stretch')
 
     with col_hist:
         fig_hist = px.histogram(
@@ -950,7 +950,7 @@ Later phases (P2/P3) converge toward the mean as more clinical evidence accumula
             title='Distribution by Phase (Histogram)',
         )
         fig_hist.update_layout(yaxis_title='Count', height=400)
-        st.plotly_chart(fig_hist, use_container_width=True)
+        st.plotly_chart(fig_hist, width='stretch')
 
     # Phase stats table
     phase_stats = phase_df.groupby('Phase').agg(
@@ -966,7 +966,7 @@ Later phases (P2/P3) converge toward the mean as more clinical evidence accumula
             'Mean': '{:.3f}', 'Median': '{:.3f}', 'Std': '{:.3f}',
             'Min': '{:.3f}', 'Max': '{:.3f}',
         }),
-        use_container_width=True,
+        width='stretch',
     )
 
     # ── Section 4: Target Universe ──
@@ -991,7 +991,7 @@ trials begin.
             color_discrete_map={'P1': '#3498db', 'P2': '#f39c12', 'P3': '#2ecc71'},
             hole=0.4,
         )
-        st.plotly_chart(fig_pie, use_container_width=True)
+        st.plotly_chart(fig_pie, width='stretch')
 
     with col_bar:
         coverage = pd.DataFrame({
@@ -1008,7 +1008,7 @@ trials begin.
             title=f'Universe Coverage ({universe_total} total)',
         )
         fig_cov.update_layout(showlegend=False, height=400)
-        st.plotly_chart(fig_cov, use_container_width=True)
+        st.plotly_chart(fig_cov, width='stretch')
 
     # Trials distribution
     st.markdown("#### Trial Count Distribution")
@@ -1027,7 +1027,7 @@ trials begin.
         yaxis_title='Number of Companies',
         height=350,
     )
-    st.plotly_chart(fig_trials, use_container_width=True)
+    st.plotly_chart(fig_trials, width='stretch')
 
     st.markdown("---")
     st.caption("Quality Score = mean predicted success probability of currently active clinical trials per company. Updated quarterly.")
@@ -1079,7 +1079,7 @@ elif page == TERMINAL_PAGE:
         '보유 펀드': s['smart_money'],
         '신선도': s['freshness'],
     } for s in SIG['signals']])
-    st.dataframe(board, use_container_width=True, hide_index=True,
+    st.dataframe(board, width='stretch', hide_index=True,
                  height=min(len(board) * 36 + 40, 760))
 
     st.markdown(
@@ -1129,7 +1129,7 @@ elif page == TERMINAL_PAGE:
             lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
                       ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
             subset=['PnL%']),
-        use_container_width=True, hide_index=True)
+        width='stretch', hide_index=True)
 
     sat_tqe = tuple((p['ticker'], int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry']), p['entry'])
                     for p in SAT['portfolio'])
@@ -1172,7 +1172,7 @@ elif page == TERMINAL_PAGE:
                         lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
                                   ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
                         subset=['PnL%']),
-                    use_container_width=True, hide_index=True)
+                    width='stretch', hide_index=True)
 
             show_bench(pr, ST['entry_date'], ST['bench'], "추천종목", bera_daily_override=daily_series)
             st.caption("※ 표본 기간이 짧은 단기·소형주 변동성 구간입니다. 누적 기간이 길어질수록 벤치마크 비교 의미가 커집니다.")
@@ -1212,7 +1212,7 @@ elif page == TERMINAL_PAGE:
                         lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
                                   ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
                         subset=['PnL%']),
-                    use_container_width=True, hide_index=True)
+                    width='stretch', hide_index=True)
 
             show_bench(pr, SB['entry_date'], SB['bench'], "추천종목", bera_daily_override=daily_series)
             st.caption("※ 표본 기간이 짧은 단기·소형주 변동성 구간입니다. 누적 기간이 길어질수록 벤치마크 비교 의미가 커집니다.")

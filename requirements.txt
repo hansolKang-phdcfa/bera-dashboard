@@ -1,12 +1,11 @@
-# Pinned to a known-good, ABI-consistent set. Do NOT loosen to `>=`.
-# Streamlit Cloud reinstalls on every reboot; loose pins let it pull the
-# latest wheels, which is how we shipped two outages:
-#   1) numpy 2.0.2 -> native ABI segfault ("Segmentation fault" in Cloud logs)
-#   2) use_container_width removed in newer streamlit (now migrated to width=)
-# numpy is held <2 deliberately (2.0 ABI break vs pyarrow/pandas).
-# Bump these only after verifying locally with the same versions.
-streamlit==1.50.0
-pandas==2.3.1
-numpy==1.26.4
+# Streamlit Cloud runs Python 3.14, which has NO prebuilt wheels for
+# numpy 1.26.x — pinning it forced a source build that hung the deploy
+# ("in the oven" forever). Keep numpy/pandas on versions new enough to
+# ship cp314 wheels so uv installs prebuilt binaries (no source build).
+# Do NOT pin numpy below 2.1 while Cloud is on 3.14.
+# yfinance held at 0.2.65 (0.2.x -> 1.x is a breaking API change here).
+streamlit>=1.50.0
+pandas>=2.2.0
+numpy>=2.1.0
 yfinance==0.2.65
-plotly==6.3.0
+plotly>=6.0.0

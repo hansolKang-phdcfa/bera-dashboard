@@ -1,11 +1,15 @@
-# Streamlit Cloud runs Python 3.14, which has NO prebuilt wheels for
-# numpy 1.26.x — pinning it forced a source build that hung the deploy
-# ("in the oven" forever). Keep numpy/pandas on versions new enough to
-# ship cp314 wheels so uv installs prebuilt binaries (no source build).
-# Do NOT pin numpy below 2.1 while Cloud is on 3.14.
-# yfinance held at 0.2.65 (0.2.x -> 1.x is a breaking API change here).
-streamlit>=1.50.0
-pandas>=2.2.0
-numpy>=2.1.0
+# Known-good, ABI-consistent, verified-locally stack. Requires the app to run
+# on Python 3.12 (set in Streamlit Cloud Advanced settings at deploy time).
+#
+# WHY 3.12: Streamlit Cloud briefly ran this app on Python 3.14, where the
+# native stack (numpy/pandas/pyarrow C extensions) SEGFAULTS at startup —
+# even with prebuilt 3.14 wheels. Cloud ignores .python-version, so the only
+# fix is to delete + redeploy selecting Python 3.12. On 3.12 these pinned
+# versions install as wheels and run clean (verified with streamlit AppTest).
+#
+# Do NOT loosen to >= and do NOT redeploy on Python 3.13/3.14.
+streamlit==1.50.0
+pandas==2.3.1
+numpy==1.26.4
 yfinance==0.2.65
-plotly>=6.0.0
+plotly==6.3.0

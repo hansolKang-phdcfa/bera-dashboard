@@ -1,5 +1,12 @@
-streamlit>=1.30.0
-pandas>=2.0.0
-numpy>=1.24.0
-yfinance>=0.2.30
-plotly>=5.18.0
+# Pinned to a known-good, ABI-consistent set. Do NOT loosen to `>=`.
+# Streamlit Cloud reinstalls on every reboot; loose pins let it pull the
+# latest wheels, which is how we shipped two outages:
+#   1) numpy 2.0.2 -> native ABI segfault ("Segmentation fault" in Cloud logs)
+#   2) use_container_width removed in newer streamlit (now migrated to width=)
+# numpy is held <2 deliberately (2.0 ABI break vs pyarrow/pandas).
+# Bump these only after verifying locally with the same versions.
+streamlit==1.50.0
+pandas==2.3.1
+numpy==1.26.4
+yfinance==0.2.65
+plotly==6.3.0

@@ -7,9 +7,13 @@
 # fix is to delete + redeploy selecting Python 3.12. On 3.12 these pinned
 # versions install as wheels and run clean (verified with streamlit AppTest).
 #
+# pyarrow is pinned too: Streamlit serializes DataFrames via pyarrow, and
+# newer pyarrow (25.x) is built for the numpy 2.x ABI — mixing it with
+# numpy 1.26.4 SEGFAULTS mid-render. pyarrow 20.0.0 matches numpy 1.x.
 # Do NOT loosen to >= and do NOT redeploy on Python 3.13/3.14.
 streamlit==1.50.0
 pandas==2.3.1
 numpy==1.26.4
+pyarrow==20.0.0
 yfinance==0.2.65
 plotly==6.3.0

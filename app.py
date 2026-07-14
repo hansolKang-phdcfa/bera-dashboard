@@ -63,8 +63,8 @@ def get_prices_batch(tickers):
 
 @st.cache_data(ttl=600)
 def get_bench_data(entry_date, entry_prices):
-    # Data-driven: iterate whatever benchmarks the portfolio's bench dict carries,
-    # so a portfolio can add its own (e.g. Core Live adds SOXX) via portfolios.json.
+    # Data-driven: iterate whatever benchmarks the portfolio's bench dict carries.
+    # Core 계열 → IBB(+SPY/QQQ), Satellite 계열 → XBI(+SPY/QQQ). 계열별 bench는 portfolios.json에서 관리.
     result = {}
     for sym, ep in entry_prices.items():
         if not ep: continue
@@ -321,15 +321,20 @@ st.sidebar.caption("Biotech Event-driven Research & Alpha")
 st.sidebar.markdown("---")
 
 TERMINAL_PAGE = "🛰️ Signal Terminal"
-OVERVIEW_PAGES = ["🧬 Quality Score", "📊 Summary"]
-PORTFOLIO_PAGES = [
+# Nav grouped by STRATEGY FAMILY so the two lanes are obvious at a glance:
+#   🔵 Core 계열     = 중대형주(시총 $2B+) 위주, 벤치마크 IBB
+#   🟢 Satellite 계열 = 소형주 포함 이벤트드리븐, 벤치마크 XBI (Signal Terminal 포함)
+OVERVIEW_PAGES = ["📊 Summary", "📈 종목별 상세"]
+CORE_PAGES = [
+    "🧬 Quality Score",
     "💰 Core (Live)",
     "🅰️ Core A/B (Paper)",
-    "🎯 Satellite v2 (Paper)",
     "🏛️ Core v2 (Paper)",
-    "📈 종목별 상세",
 ]
-INSTITUTIONAL_PAGES = [TERMINAL_PAGE]
+SATELLITE_PAGES = [
+    "🎯 Satellite v2 (Paper)",
+]
+INSTITUTIONAL_PAGES = [TERMINAL_PAGE]  # Satellite 계열 · URL 게이트
 
 if 'page' not in st.session_state:
     st.session_state.page = "🧬 Quality Score"
@@ -349,17 +354,21 @@ st.sidebar.markdown("**Overview**")
 for label in OVERVIEW_PAGES:
     _nav_button(label)
 
-st.sidebar.markdown("**Portfolios**")
-for label in PORTFOLIO_PAGES:
+st.sidebar.markdown("**🔵 Core 계열**")
+st.sidebar.caption("중대형주 · 시총 $2B+ · vs IBB")
+for label in CORE_PAGES:
     _nav_button(label)
 
-# Institutional section is hidden unless the URL carries ?institutional
-# (e.g. bera-dashboard.streamlit.app/?institutional). Without it, visitors
-# never learn the Signal Terminal exists. Streamlit Cloud has no real path
-# routing, so a query param stands in for the "/institutional" entry point.
+st.sidebar.markdown("**🟢 Satellite 계열**")
+st.sidebar.caption("소형주 포함 · 이벤트드리븐 · vs XBI")
+for label in SATELLITE_PAGES:
+    _nav_button(label)
+
+# Signal Terminal is a Satellite-family institutional page, hidden unless the URL
+# carries ?institutional (e.g. bera-dashboard.streamlit.app/?institutional).
+# Rendered under the Satellite group so its strategy family reads clearly.
 _inst_unlocked = "institutional" in st.query_params
 if _inst_unlocked:
-    st.sidebar.markdown("**Institutional** 🔒")
     for label in INSTITUTIONAL_PAGES:
         _nav_button(label)
 elif st.session_state.page in INSTITUTIONAL_PAGES:
@@ -377,6 +386,7 @@ st.sidebar.caption("Updated: 2026-06-15")
 # ═══ Page: Core Live ═══
 if page == "💰 Core (Live)":
     st.title("Core Portfolio -- Live Trading")
+    st.caption("🔵 Core 계열 · 중대형주(시총 $2B+) · 벤치마크 IBB")
     st.markdown(LIVE['entry_note'])
     if LIVE.get('sl_warning'):
         st.warning(LIVE['sl_warning'])
@@ -429,6 +439,7 @@ if page == "💰 Core (Live)":
 # ═══ Page: Core A/B ═══
 elif page == "🅰️ Core A/B (Paper)":
     st.title("Core A/B -- Paper Trading")
+    st.caption("🔵 Core 계열 · 중대형주(시총 $2B+) · 벤치마크 IBB")
     st.markdown(CAB['entry_note'])
     if CAB.get('sl_warning'):
         st.warning(CAB['sl_warning'])
@@ -524,6 +535,7 @@ elif page == "🅰️ Core A/B (Paper)":
 # ═══ Page: Satellite Config H ═══
 elif page == "🎯 Satellite v2 (Paper)":
     st.title("Satellite v2 -- Paper Tracking")
+    st.caption("🟢 Satellite 계열 · 소형주 포함 · 벤치마크 XBI")
     st.markdown(SAT['entry_note'])
     st.markdown(SAT['backtest_note'])
     st.markdown("---")
@@ -570,6 +582,7 @@ elif page == "🎯 Satellite v2 (Paper)":
 # ═══ Page: Core New ═══
 elif page == "🏛️ Core v2 (Paper)":
     st.title("Core v2 -- Paper Tracking")
+    st.caption("🔵 Core 계열 · 중대형주(시총 $2B+) · 벤치마크 IBB")
     st.markdown(CNEW['entry_note'])
     st.markdown(CNEW['backtest_note'])
     st.markdown("---")
@@ -716,7 +729,7 @@ elif page == "📊 Summary":
         if cur <= 0: cur = p['entry']
         tc += p['qty'] * p['entry']; tv += p['qty'] * cur
     pnl = tv - tc - LIVE['sl_loss']
-    summaries.append({'Portfolio': 'Core (Live)', 'Entry': LIVE['entry_date'],
+    summaries.append({'Portfolio': 'Core (Live)', 'Family': '🔵 Core', 'Entry': LIVE['entry_date'],
                        'Seed': f"${LIVE['seed_usd']:,}", 'Stocks': len(LIVE['portfolio']),
                        'Value': tv, 'PnL': pnl, 'PnL%': pnl/LIVE['orig_cost']*100 if LIVE['orig_cost']>0 else 0,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(LIVE['entry_date'])).days})
@@ -731,7 +744,7 @@ elif page == "📊 Summary":
         if cur <= 0: cur = ep
         tc += qty * ep; tv += qty * cur
     pnl = tv - tc - CAB['sl_loss']
-    summaries.append({'Portfolio': 'Core A (Paper)', 'Entry': CAB['entry_date'],
+    summaries.append({'Portfolio': 'Core A (Paper)', 'Family': '🔵 Core', 'Entry': CAB['entry_date'],
                        'Seed': f"${CAB['seed_usd']:,}", 'Stocks': len(CAB['core_a'])+len(CAB['defense']),
                        'Value': tv, 'PnL': pnl, 'PnL%': pnl/CAB['orig_cost']*100 if CAB['orig_cost']>0 else 0,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(CAB['entry_date'])).days})
@@ -745,7 +758,7 @@ elif page == "📊 Summary":
         if cur <= 0: cur = p['entry']
         q = int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry'])
         tc += q * p['entry']; tv += q * cur
-    summaries.append({'Portfolio': 'Satellite v2 (Paper)', 'Entry': SAT['entry_date'],
+    summaries.append({'Portfolio': 'Satellite v2 (Paper)', 'Family': '🟢 Satellite', 'Entry': SAT['entry_date'],
                        'Seed': f"${SAT['seed_usd']:,}", 'Stocks': len(SAT['portfolio']),
                        'Value': tv, 'PnL': tv-tc, 'PnL%': (tv-tc)/tc*100 if tc>0 else 0,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(SAT['entry_date'])).days})
@@ -760,7 +773,7 @@ elif page == "📊 Summary":
         if cur <= 0: cur = p['entry']
         q = max(1, int(CNEW['seed_usd'] * p['weight_mult'] / tm / p['entry']))
         tc += q * p['entry']; tv += q * cur
-    summaries.append({'Portfolio': 'Core v2 (Paper)', 'Entry': CNEW['entry_date'],
+    summaries.append({'Portfolio': 'Core v2 (Paper)', 'Family': '🔵 Core', 'Entry': CNEW['entry_date'],
                        'Seed': f"${CNEW['seed_usd']:,}", 'Stocks': len(CNEW['portfolio']),
                        'Value': tv, 'PnL': tv-tc, 'PnL%': (tv-tc)/tc*100 if tc>0 else 0,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(CNEW['entry_date'])).days})
@@ -795,6 +808,7 @@ Paper tracking started June 2026. Results updated in real-time via yfinance.
 # ═══ Page: Quality Score ═══
 elif page == "🧬 Quality Score":
     st.title("Quality Score — Clinical AI Pipeline Scoring")
+    st.caption("🔵 Core 계열 전략 · 중대형주(시총 $2B+) · 벤치마크 IBB")
     st.markdown("""
 BERA's proprietary AI model predicts clinical trial success probability for every active trial
 across 814 US-listed biotech companies. The **Quality Score** is the average predicted success
@@ -823,7 +837,7 @@ market cap $2B+, equal-weighted, quarterly rebalancing. Period: Jan 2019 — May
     annual_data = pd.DataFrame({
         'Year': ['2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026*'],
         'Quality Score Strategy': [40, 81, 14, 39, 52, 13, 88, 8],
-        'XBI': [30.5, 49.0, -20.5, -28.1, 9.5, -0.0, 33.7, 10.9],
+        'IBB': [24.0, 26.7, 1.6, -13.5, 4.8, -4.0, 27.3, 0.6],
         'SPY': [31.1, 17.2, 30.5, -18.6, 26.7, 25.6, 18.0, 8.3],
     })
 
@@ -833,9 +847,9 @@ market cap $2B+, equal-weighted, quarterly rebalancing. Period: Jan 2019 — May
         name='Quality Score Strategy', marker_color='#1976D2',
     ))
     fig_annual.add_trace(go.Scatter(
-        x=annual_data['Year'], y=annual_data['XBI'],
-        name='XBI (Biotech ETF)', mode='lines+markers',
-        line=dict(color='#E53935', width=2),
+        x=annual_data['Year'], y=annual_data['IBB'],
+        name='IBB (Biotech ETF)', mode='lines+markers',
+        line=dict(color='#FB8C00', width=2),
     ))
     fig_annual.add_trace(go.Scatter(
         x=annual_data['Year'], y=annual_data['SPY'],
@@ -853,8 +867,8 @@ market cap $2B+, equal-weighted, quarterly rebalancing. Period: Jan 2019 — May
 
     st.markdown("""
 Key observations:
-- Positive returns in every year including 2022 (+39%) when XBI fell -28% and SPY fell -19%
-- Outperformed XBI in 7 of 8 years — the Quality Score consistently identifies pipeline strength
+- Positive returns in every year including 2022 (+39%) when IBB fell -13.5% and SPY fell -19%
+- Outperformed IBB in all 8 years — the Quality Score consistently identifies pipeline strength
 - 2026 YTD as of May (*partial year)
 """)
 
@@ -1052,6 +1066,7 @@ elif page == TERMINAL_PAGE:
             SIG = json.load(f)
 
     st.title("🛰️ Satellite Signal Terminal")
+    st.caption("🟢 Satellite 계열 전략 · 소형주 포함 · 벤치마크 XBI")
     st.caption(
         f"기관 전용 · 시그널 기준일 {SIG['run_date']} · "
         f"보드 최종 업데이트 {SIG.get('generated_at', '—')} · 소형·중형 바이오텍 이벤트 드리븐"

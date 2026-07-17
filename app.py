@@ -516,10 +516,11 @@ elif page == "🅰️ Core A/B (Paper)":
             lambda r: r['PnL'] / (r['Value'] - r['PnL']) * 100 if (r['Value'] - r['PnL']) > 0 else 0, axis=1)
         show_charts(chart_df)
         st.markdown("---")
-        last_tpp = tpp
         core_tqe = [(s['ticker'], s['qty'], s['entry']) for s in core_stocks_raw]
         def_tqe = [(s['ticker'], s['qty'], s['entry']) for s in defense_raw]
-        last_tqe = tuple(core_tqe + def_tqe)
+        if label == "Core A":
+            a_tpp = tpp
+            a_tqe = tuple(core_tqe + def_tqe)
 
     # SL-aware daily chart for Core A/B (use Core A + Defense, old portfolio before SL)
     cab_sl_ev = None
@@ -528,8 +529,8 @@ elif page == "🅰️ Core A/B (Paper)":
         old_core = [(s['ticker'], s['qty'], s['entry']) for s in ev['old_core_a']]
         old_def = [(s['ticker'], s['qty'], s['entry']) for s in CAB['defense']]
         cab_sl_ev = [{'date': ev['date'], 'old_portfolio': old_core + old_def}]
-    show_bench(last_tpp, CAB['entry_date'], CAB['bench'], "Core A/B",
-               portfolio=last_tqe, sl_events=cab_sl_ev)
+    show_bench(a_tpp, CAB['entry_date'], CAB['bench'], "Core A/B",
+               portfolio=a_tqe, sl_events=cab_sl_ev)
 
 
 # ═══ Page: Satellite Config H ═══

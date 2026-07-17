@@ -141,11 +141,19 @@ def get_portfolio_daily(tickers_qty_entry, entry_date, sl_events=None):
         # Mid-series NaN: forward-fill from prior close (avoids entry-price spike)
         close = close.ffill()
 
-        # Denominator: original cost (old portfolio if SL, else current)
-        if old_pf:
-            total_cost = sum(qty * ep for _, qty, ep in old_pf)
-        else:
-            total_cost = sum(qty * ep for _, qty, ep in tickers_qty_entry)
+        # Delisted/untradeable holdings (no price data anywhere in the window, e.g.
+        # SLNO) are dropped from BOTH numerator and denominator — same as the
+        # headline metric, which values them at entry (0 PnL) and excludes their
+        # cost from orig_cost. Keeping them would peg the position flat at entry
+        # while still counting its cost, diluting the % return below the metric.
+        def _dead(tk):
+            return tk not in close.columns or close[tk].notna().sum() == 0
+        dead = {tk for tk, _, _ in (old_pf or [])} | {tk for tk, _, _ in tickers_qty_entry}
+        dead = {tk for tk in dead if _dead(tk)}
+
+        # Denominator: original cost (old portfolio if SL, else current), ex-dead
+        cost_pf = old_pf if old_pf else tickers_qty_entry
+        total_cost = sum(qty * ep for tk, qty, ep in cost_pf if tk not in dead)
         if total_cost <= 0:
             return None
 
@@ -155,6 +163,8 @@ def get_portfolio_daily(tickers_qty_entry, entry_date, sl_events=None):
 
             port_val = 0
             for tk, qty, ep in pf:
+                if tk in dead:
+                    continue
                 if tk in close.columns:
                     p = close.loc[date, tk]
                     if pd.notna(p) and p > 0:

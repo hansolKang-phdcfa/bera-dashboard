@@ -819,20 +819,20 @@
       }
     ]
   },
-  "config_h_0716": {
+  "config_h_0714": {
     "engine": "Config H (with BERA AI)",
-    "entry_date": "2026-07-16",
+    "entry_date": "2026-07-14",
     "sl": -0.3,
     "vol_mult": 3.0,
     "drop_th": -0.07,
     "hold": 120,
     "bench": {
-      "XBI": 152.0,
-      "SPY": 750.72,
-      "QQQ": 705.94
+      "XBI": 155.45,
+      "SPY": 751.83,
+      "QQQ": 719.69
     },
     "backtest_note": "Backtest: CAGR 83.8%, Sharpe 1.98 (Satellite Config H)",
-    "note": "스마트머니 스코어 + 임상 AI 게이트(prob>=0.5, 3yr P2/3). public us DB as-of 2026-07-16.",
+    "note": "스마트머니 스코어 + 임상 AI 게이트(prob>=0.5, 3yr P2/3). public us DB, AS_OF 2026-07-14(7/15 13G 제외, look-ahead 회피).",
     "tickers": [
       "JBIO",
       "NKTR",
@@ -841,9 +841,9 @@
       "KNSA",
       "SABS",
       "ALXO",
-      "MAZE",
       "IRON",
-      "AVTX"
+      "AVTX",
+      "PALI"
     ]
   }
 }

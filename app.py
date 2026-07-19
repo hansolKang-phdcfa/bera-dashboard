@@ -1336,10 +1336,10 @@ elif page == TERMINAL_PAGE:
             st.info("트래커 데이터를 불러오지 못했습니다.")
 
     # ── With BERA AI: Config H (2026-07-16 re-discovery) ──
-    CH = PF.get('config_h_0716')
+    CH = PF.get('config_h_0714')
     if CH:
         st.markdown("---")
-        st.markdown("### 🧬 With BERA AI — Config H (7/16 재발굴)")
+        st.markdown("### 🧬 With BERA AI — Config H (7/14 재발굴)")
         st.caption(
             f"진입 {CH['entry_date']} 시가 · {len(CH['tickers'])}종목 동일가중 · "
             f"스마트머니 스코어 + 임상 AI 게이트(prob≥0.5, 3yr P2/3) · "

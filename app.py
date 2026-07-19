@@ -24,6 +24,7 @@ LIVE = PF['core_live']
 CAB = PF['core_ab']
 SAT = PF['satellite']
 CNEW = PF['core_new']
+CV2 = PF['core_v2_0717']
 
 # ═══ Helpers ═══
 
@@ -340,6 +341,7 @@ CORE_PAGES = [
     "💰 Core (Live)",
     "🅰️ Core A/B (Paper)",
     "🏛️ Core v2 (Paper)",
+    "🚀 Core v2 Live (7/17)",
 ]
 SATELLITE_PAGES = [
     "🎯 Satellite v2 (Paper)",
@@ -636,6 +638,54 @@ elif page == "🏛️ Core v2 (Paper)":
     st.markdown("---")
     cnew_tqe = tuple((p['ticker'], max(1, int(CNEW['seed_usd'] * p['weight_mult'] / total_mult / p['entry'])), p['entry']) for p in CNEW['portfolio'])
     show_bench(tpp, CNEW['entry_date'], CNEW['bench'], "Core v2", portfolio=cnew_tqe)
+
+
+# ═══ Page: Core v2 Live (7/17) ═══
+elif page == "🚀 Core v2 Live (7/17)":
+    st.title("Core v2 Live -- 2026-07-17 신규 발굴 트랙")
+    st.caption("🔵 Core 계열 · Core v2 전략(순수 prob top20 + SI-drop) · 시총 $2B+ · 벤치 IBB/XBI · 동일가중")
+    st.markdown(CV2['entry_note'])
+    st.markdown(CV2['backtest_note'])
+    st.markdown("---")
+
+    tickers = [p['ticker'] for p in CV2['portfolio']]
+    prices = get_prices_batch(tickers)
+    total_mult = sum(p['weight_mult'] for p in CV2['portfolio'])
+
+    rows = []
+    for p in CV2['portfolio']:
+        cur = prices.get(p['ticker'], p['entry'])
+        if cur <= 0: cur = p['entry']
+        alloc = CV2['seed_usd'] * p['weight_mult'] / total_mult
+        qty = max(1, int(alloc / p['entry']))
+        cost = qty * p['entry']; val = qty * cur; pnl = val - cost
+        rows.append({'Ticker': p['ticker'],
+                      'Weight': f"{p['weight_mult']/total_mult*100:.1f}%",
+                      'Prob': p['prob'], 'Entry': p['entry'], 'Current': cur,
+                      'Value': val, 'PnL': pnl, 'PnL%': pnl/cost*100 if cost>0 else 0})
+
+    df = pd.DataFrame(rows)
+    tc = df['Value'].sum(); tp = df['PnL'].sum()
+    tpp = tp / (tc - tp) * 100 if (tc - tp) > 0 else 0
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Active", f"{len(CV2['portfolio'])} / {CV2['max_slots']} slots")
+    c2.metric("Invested", f"${tc:,.0f}")
+    c3.metric("PnL", f"${tp:+,.0f}", delta=f"{tpp:+.2f}%")
+    c4.metric("Slots Available", f"{CV2['max_slots'] - len(CV2['portfolio'])}")
+
+    st.dataframe(df.style.format({
+        'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
+        'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'
+    }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
+                ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
+                subset=['PnL','PnL%']),
+        width='stretch', hide_index=True)
+
+    show_charts(df)
+    st.markdown("---")
+    cv2_tqe = tuple((p['ticker'], max(1, int(CV2['seed_usd'] * p['weight_mult'] / total_mult / p['entry'])), p['entry']) for p in CV2['portfolio'])
+    show_bench(tpp, CV2['entry_date'], CV2['bench'], "Core v2 Live", portfolio=cv2_tqe)
 
 
 # ═══ Page: 종목별 상세 (Per-stock Detail) ═══

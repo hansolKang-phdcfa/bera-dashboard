@@ -1,6 +1,6 @@
 """BERA Dashboard — Public Web Version
 ======================================
-4 portfolios: Core (Live) | Core A/B (Paper) | Satellite Config H | Core New
+Core tracks: Core (5/18, v1) | Core (5/28, v2) | Core (6/5, v3) | Core (7/17, v4) | Satellite v2
 No strategy parameters exposed. No local DB dependency.
 Portfolio data loaded from data/portfolios.json (separate from UI code).
 """
@@ -338,10 +338,10 @@ TERMINAL_PAGE = "🛰️ Signal Terminal"
 OVERVIEW_PAGES = ["📊 Summary", "📈 종목별 상세"]
 CORE_PAGES = [
     "🧬 Quality Score",
-    "💰 Core (Live)",
-    "🅰️ Core A/B (Paper)",
-    "🏛️ Core v2 (Paper)",
-    "🚀 Core v2 Live (7/17)",
+    "💰 Core (5/18, v1)",
+    "🅰️ Core (5/28, v2)",
+    "🏛️ Core (6/5, v3)",
+    "🚀 Core (7/17, v4)",
 ]
 SATELLITE_PAGES = [
     "🎯 Satellite v2 (Paper)",
@@ -396,7 +396,7 @@ st.sidebar.caption("Updated: 2026-06-15")
 
 
 # ═══ Page: Core Live ═══
-if page == "💰 Core (Live)":
+if page == "💰 Core (5/18, v1)":
     st.title("Core Portfolio -- Live Trading")
     st.caption("🔵 Core 계열 · 중대형주(시총 $2B+) · 벤치마크 IBB")
     st.markdown(LIVE['entry_note'])
@@ -448,9 +448,9 @@ if page == "💰 Core (Live)":
                portfolio=live_tqe, sl_events=sl_ev)
 
 
-# ═══ Page: Core A/B ═══
-elif page == "🅰️ Core A/B (Paper)":
-    st.title("Core A/B -- Paper Trading")
+# ═══ Page: Core (5/28, v2) ═══
+elif page == "🅰️ Core (5/28, v2)":
+    st.title("Core (5/28, v2) -- Paper Trading")
     st.caption("🔵 Core 계열 · 중대형주(시총 $2B+) · 벤치마크 IBB")
     st.markdown(CAB['entry_note'])
     if CAB.get('sl_warning'):
@@ -541,7 +541,7 @@ elif page == "🅰️ Core A/B (Paper)":
         old_core = [(s['ticker'], s['qty'], s['entry']) for s in ev['old_core_a']]
         old_def = [(s['ticker'], s['qty'], s['entry']) for s in CAB['defense']]
         cab_sl_ev = [{'date': ev['date'], 'old_portfolio': old_core + old_def}]
-    show_bench(a_tpp, CAB['entry_date'], CAB['bench'], "Core A/B",
+    show_bench(a_tpp, CAB['entry_date'], CAB['bench'], "Core (5/28, v2)",
                portfolio=a_tqe, sl_events=cab_sl_ev)
 
 
@@ -593,8 +593,8 @@ elif page == "🎯 Satellite v2 (Paper)":
 
 
 # ═══ Page: Core New ═══
-elif page == "🏛️ Core v2 (Paper)":
-    st.title("Core v2 -- Paper Tracking")
+elif page == "🏛️ Core (6/5, v3)":
+    st.title("Core (6/5, v3) -- Paper Tracking")
     st.caption("🔵 Core 계열 · 중대형주(시총 $2B+) · 벤치마크 IBB")
     st.markdown(CNEW['entry_note'])
     st.markdown(CNEW['backtest_note'])
@@ -637,13 +637,13 @@ elif page == "🏛️ Core v2 (Paper)":
     show_charts(df)
     st.markdown("---")
     cnew_tqe = tuple((p['ticker'], max(1, int(CNEW['seed_usd'] * p['weight_mult'] / total_mult / p['entry'])), p['entry']) for p in CNEW['portfolio'])
-    show_bench(tpp, CNEW['entry_date'], CNEW['bench'], "Core v2", portfolio=cnew_tqe)
+    show_bench(tpp, CNEW['entry_date'], CNEW['bench'], "Core (6/5, v3)", portfolio=cnew_tqe)
 
 
-# ═══ Page: Core v2 Live (7/17) ═══
-elif page == "🚀 Core v2 Live (7/17)":
-    st.title("Core v2 Live -- 2026-07-17 신규 발굴 트랙")
-    st.caption("🔵 Core 계열 · Core v2 전략(순수 prob top20 + SI-drop) · 시총 $2B+ · 벤치 IBB/XBI · 동일가중")
+# ═══ Page: Core (7/17, v4) ═══
+elif page == "🚀 Core (7/17, v4)":
+    st.title("Core (7/17, v4) -- 2026-07-17 신규 발굴 트랙")
+    st.caption("🔵 Core 계열 · Core v2 전략(순수 prob top20 + SI-drop) · 시총 $2B+ · 벤치 IBB/SPY/QQQ · 동일가중")
     st.markdown(CV2['entry_note'])
     st.markdown(CV2['backtest_note'])
     st.markdown("---")
@@ -685,7 +685,7 @@ elif page == "🚀 Core v2 Live (7/17)":
     show_charts(df)
     st.markdown("---")
     cv2_tqe = tuple((p['ticker'], max(1, int(CV2['seed_usd'] * p['weight_mult'] / total_mult / p['entry'])), p['entry']) for p in CV2['portfolio'])
-    show_bench(tpp, CV2['entry_date'], CV2['bench'], "Core v2 Live", portfolio=cv2_tqe)
+    show_bench(tpp, CV2['entry_date'], CV2['bench'], "Core (7/17, v4)", portfolio=cv2_tqe)
 
 
 # ═══ Page: 종목별 상세 (Per-stock Detail) ═══
@@ -697,7 +697,7 @@ elif page == "📈 종목별 상세":
     # ── 전 포트폴리오 포지션 통합 (대시보드에 표시되는 종목들) ──
     cnew_total_mult = sum(p['weight_mult'] for p in CNEW['portfolio'])
     positions = {
-        "💰 Core (Live)": [
+        "💰 Core (5/18, v1)": [
             {'ticker': p['ticker'], 'qty': p['qty'], 'entry': p['entry']}
             for p in LIVE['portfolio']
         ],
@@ -719,7 +719,7 @@ elif page == "📈 종목별 상세":
              'entry': p['entry']}
             for p in SAT['portfolio']
         ],
-        "🏛️ Core v2": [
+        "🏛️ Core (6/5, v3)": [
             {'ticker': p['ticker'],
              'qty': max(1, int(CNEW['seed_usd'] * p['weight_mult'] / cnew_total_mult / p['entry'])),
              'entry': p['entry']}
@@ -790,7 +790,7 @@ elif page == "📊 Summary":
         if cur <= 0: cur = p['entry']
         tc += p['qty'] * p['entry']; tv += p['qty'] * cur
     pnl = tv - tc - LIVE['sl_loss']
-    summaries.append({'Portfolio': 'Core (Live)', 'Family': '🔵 Core', 'Entry': LIVE['entry_date'],
+    summaries.append({'Portfolio': 'Core (5/18, v1)', 'Family': '🔵 Core', 'Entry': LIVE['entry_date'],
                        'Seed': f"${LIVE['seed_usd']:,}", 'Stocks': len(LIVE['portfolio']),
                        'Value': tv, 'PnL': pnl, 'PnL%': pnl/LIVE['orig_cost']*100 if LIVE['orig_cost']>0 else 0,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(LIVE['entry_date'])).days})
@@ -834,7 +834,7 @@ elif page == "📊 Summary":
         if cur <= 0: cur = p['entry']
         q = max(1, int(CNEW['seed_usd'] * p['weight_mult'] / tm / p['entry']))
         tc += q * p['entry']; tv += q * cur
-    summaries.append({'Portfolio': 'Core v2 (Paper)', 'Family': '🔵 Core', 'Entry': CNEW['entry_date'],
+    summaries.append({'Portfolio': 'Core (6/5, v3)', 'Family': '🔵 Core', 'Entry': CNEW['entry_date'],
                        'Seed': f"${CNEW['seed_usd']:,}", 'Stocks': len(CNEW['portfolio']),
                        'Value': tv, 'PnL': tv-tc, 'PnL%': (tv-tc)/tc*100 if tc>0 else 0,
                        'Days': (pd.Timestamp.now()-pd.Timestamp(CNEW['entry_date'])).days})

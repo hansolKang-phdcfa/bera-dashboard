@@ -1335,5 +1335,43 @@ elif page == TERMINAL_PAGE:
         else:
             st.info("트래커 데이터를 불러오지 못했습니다.")
 
+    # ── With BERA AI: Config H (2026-07-16 re-discovery) ──
+    CH = PF.get('config_h_0716')
+    if CH:
+        st.markdown("---")
+        st.markdown("### 🧬 With BERA AI — Config H (7/16 재발굴)")
+        st.caption(
+            f"진입 {CH['entry_date']} 시가 · {len(CH['tickers'])}종목 동일가중 · "
+            f"스마트머니 스코어 + 임상 AI 게이트(prob≥0.5, 3yr P2/3) · "
+            f"SL {int(CH['sl']*100)}% + vol3x/일간{int(CH['drop_th']*100)}% exit + hold{CH['hold']}d · {CH['backtest_note']}"
+        )
+        pr, trows, xbi_ret, n, daily_series = compute_shared_tracker(
+            tuple(CH['tickers']), CH['entry_date'], CH['sl'], CH['vol_mult'], CH['drop_th'], CH['hold'])
+        if pr is not None:
+            held = [r for r in trows if r['상태'] == '보유']
+            exited = [r for r in trows if r['상태'] != '보유']
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Portfolio", f"{pr:+.2f}%")
+            c2.metric("보유 / 손절", f"{len(held)} / {len(exited)}")
+            c3.metric("Entry", CH['entry_date'])
+            if exited:
+                parts = []
+                for r in exited:
+                    why, _, dt = r['상태'].partition('@')
+                    parts.append(f"{r['Ticker']} {r['PnL%']:+.1f}% ({why} {dt})")
+                st.warning("🛑 손절 (수익률에 반영됨): " + " · ".join(parts))
+            if held:
+                hdf = pd.DataFrame(held)[['Ticker', 'Entry', 'Current', 'PnL%']]
+                st.dataframe(
+                    hdf.style.format({'Entry': '${:.2f}', 'Current': '${:.2f}', 'PnL%': '{:+.1f}%'}).map(
+                        lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
+                                  ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
+                        subset=['PnL%']),
+                    width='stretch', hide_index=True)
+            show_bench(pr, CH['entry_date'], CH['bench'], "Config H", bera_daily_override=daily_series)
+            st.caption("※ 임상 AI 게이트 통과한 스마트머니 종목만 — 'Without BERA AI'(5/26·6/25) 트랙과 성과 비교용.")
+        else:
+            st.info("트래커 데이터를 불러오지 못했습니다.")
+
     st.markdown("---")
     st.caption("BERA Satellite Signal Terminal · 기관 전용 · 무단 배포 금지")

@@ -1190,6 +1190,32 @@ elif page == TERMINAL_PAGE:
 퇴출은 손절 · 급락 · 보유기간 규율로 관리합니다. 세부 기준은 비공개입니다.
 """)
 
+    # ── Quality Score — Satellite universe ($500M-$2B) ──
+    st.markdown("---")
+    st.markdown("### 🧬 Quality Score — Satellite 유니버스 ($500M–$2B)")
+    st.caption(
+        "소형주 임상 성공확률 스코어. Satellite 계열이 스크리닝하는 시총 밴드 기준. "
+        "(스마트머니 시그널 위에 얹는 임상 레이어) · Core($2B+) QS는 Quality Score 페이지 참조"
+    )
+    try:
+        _qs = pd.read_csv(os.path.join(DATA_DIR, 'quality_score_ticker.csv'))
+        _qs = _qs[(_qs['market_cap'] >= 5e8) & (_qs['market_cap'] < 2e9)].rename(columns={
+            'yahoo_ticker': 'Ticker', 'mean_p_completed': 'Quality Score',
+            'n_trials': 'Active Trials', 'phase': 'Phase'})
+        _top = _qs.nlargest(15, 'Quality Score')[
+            ['Ticker', 'Quality Score', 'Phase', 'Active Trials']].reset_index(drop=True)
+        _top.index = _top.index + 1
+        st.dataframe(
+            _top.style.format({'Quality Score': '{:.3f}'}).map(
+                lambda v: 'color:#2ecc71; font-weight:bold' if isinstance(v, (int, float)) and v >= 0.55
+                else ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0.35 else ''),
+                subset=['Quality Score']),
+            width='stretch', hide_index=False,
+            height=min(len(_top) * 38 + 40, 640))
+        st.caption(f"Satellite 유니버스 스코어링 종목 {len(_qs)}개 중 상위 15 · 임상 QS ≥ 0.55 강조")
+    except Exception as e:
+        st.info(f"QS 데이터를 불러오지 못했습니다: {e}")
+
     # ── Live paper portfolio (track record / proof) ──
     st.markdown("---")
     st.markdown("### 🧬 With BERA AI — Satellite v2 (스마트머니 + 임상 AI 필터)")

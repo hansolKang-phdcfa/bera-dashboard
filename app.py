@@ -326,6 +326,38 @@ def compute_shared_tracker(tickers, entry_date, sl, vol_mult, drop_th, hold):
     return port_ret, rows, xbi_ret, len(tks), daily_series
 
 
+def render_tracker_track(cfg, title, sub_caption, bench_label):
+    """Render a Satellite ticker-list track via compute_shared_tracker (SL/vol/hold exit)."""
+    st.markdown(f"### {title}")
+    st.caption(sub_caption)
+    pr, trows, xbi_ret, n, daily_series = compute_shared_tracker(
+        tuple(cfg['tickers']), cfg['entry_date'], cfg['sl'], cfg['vol_mult'], cfg['drop_th'], cfg['hold'])
+    if pr is None:
+        st.info("트래커 데이터를 불러오지 못했습니다.")
+        return
+    held = [r for r in trows if r['상태'] == '보유']
+    exited = [r for r in trows if r['상태'] != '보유']
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Portfolio", f"{pr:+.2f}%")
+    c2.metric("보유 / 손절", f"{len(held)} / {len(exited)}")
+    c3.metric("Entry", cfg['entry_date'])
+    if exited:
+        parts = []
+        for r in exited:
+            why, _, dt = r['상태'].partition('@')
+            parts.append(f"{r['Ticker']} {r['PnL%']:+.1f}% ({why} {dt})")
+        st.warning("🛑 손절 (수익률에 반영됨): " + " · ".join(parts))
+    if held:
+        hdf = pd.DataFrame(held)[['Ticker', 'Entry', 'Current', 'PnL%']]
+        st.dataframe(
+            hdf.style.format({'Entry': '${:.2f}', 'Current': '${:.2f}', 'PnL%': '{:+.1f}%'}).map(
+                lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
+                          ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
+                subset=['PnL%']),
+            width='stretch', hide_index=True)
+    show_bench(pr, cfg['entry_date'], cfg['bench'], bench_label, bera_daily_override=daily_series)
+
+
 # ═══ Sidebar ═══
 st.sidebar.title("BERA")
 st.sidebar.caption("Biotech Event-driven Research & Alpha")
@@ -344,7 +376,8 @@ CORE_PAGES = [
     "🚀 Core (7/17, v4)",
 ]
 SATELLITE_PAGES = [
-    "🎯 Satellite v2 (Paper)",
+    "🎯 Satellite · QS+Market",
+    "📡 Satellite · Market-only",
 ]
 INSTITUTIONAL_PAGES = [TERMINAL_PAGE]  # Satellite 계열 · URL 게이트
 
@@ -545,17 +578,18 @@ elif page == "🅰️ Core (5/28, v2)":
                portfolio=a_tqe, sl_events=cab_sl_ev)
 
 
-# ═══ Page: Satellite Config H ═══
-elif page == "🎯 Satellite v2 (Paper)":
-    st.title("Satellite v2 -- Paper Tracking")
-    st.caption("🟢 Satellite 계열 · 소형주 포함 · 벤치마크 XBI")
-    st.markdown(SAT['entry_note'])
-    st.markdown(SAT['backtest_note'])
+# ═══ Page: Satellite · QS+Market (With BERA AI) ═══
+elif page == "🎯 Satellite · QS+Market":
+    st.title("Satellite · QS + Market  (With BERA AI)")
+    st.caption("🟢 소형주 이벤트드리븐 · 벤치 XBI · 스마트머니 시그널 위에 임상 AI 게이트를 얹은 트랙")
     st.markdown("---")
 
+    # ── Satellite v2 (6/5) ──
+    st.markdown("### 🧬 Satellite v2 (6/5)")
+    st.markdown(SAT['entry_note'])
+    st.markdown(SAT['backtest_note'])
     tickers = [p['ticker'] for p in SAT['portfolio']]
     prices = get_prices_batch(tickers)
-
     rows = []
     for p in SAT['portfolio']:
         cur = prices.get(p['ticker'], p['entry'])
@@ -567,17 +601,14 @@ elif page == "🎯 Satellite v2 (Paper)":
                       'Prob': p['prob'], 'Entry': p['entry'], 'Current': cur,
                       'Value': val, 'PnL': pnl, 'PnL%': pnl/cost*100 if cost>0 else 0,
                       'Smart Money': p['smart_money']})
-
     df = pd.DataFrame(rows)
     tc = df['Value'].sum(); tp = df['PnL'].sum()
     tpp = tp / (tc - tp) * 100 if (tc - tp) > 0 else 0
-
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Active", f"{len(SAT['portfolio'])} / {SAT['max_slots']} slots")
     c2.metric("Invested", f"${tc:,.0f}")
     c3.metric("PnL", f"${tp:+,.0f}", delta=f"{tpp:+.2f}%")
     c4.metric("Slots Available", f"{SAT['max_slots'] - len(SAT['portfolio'])}")
-
     st.dataframe(df.style.format({
         'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
         'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'
@@ -585,11 +616,37 @@ elif page == "🎯 Satellite v2 (Paper)":
                 ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
                 subset=['PnL','PnL%']),
         width='stretch', hide_index=True)
-
-    show_charts(df)
-    st.markdown("---")
     sat_tqe = tuple((p['ticker'], int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry']), p['entry']) for p in SAT['portfolio'])
-    show_bench(tpp, SAT['entry_date'], SAT['bench'], "Satellite", portfolio=sat_tqe)
+    show_bench(tpp, SAT['entry_date'], SAT['bench'], "Satellite v2", portfolio=sat_tqe)
+
+    # ── Config H (7/14) ──
+    st.markdown("---")
+    CH = PF.get('config_h_0714')
+    if CH:
+        render_tracker_track(
+            CH, "🧬 Config H (7/14 재발굴)",
+            f"진입 {CH['entry_date']} 시가 · {len(CH['tickers'])}종목 동일가중 · 스마트머니 스코어 + 임상 AI 게이트(prob≥0.5, 3yr P2/3) · SL-30/vol3x/drop-7%/hold120 · {CH['backtest_note']}",
+            "Config H")
+
+
+# ═══ Page: Satellite · Market-only (Without BERA AI) ═══
+elif page == "📡 Satellite · Market-only":
+    st.title("Satellite · Market-only  (Without BERA AI)")
+    st.caption("🟢 소형주 이벤트드리븐 · 벤치 XBI · 순수 스마트머니(Scouter Strong Buy), 임상 게이트 없음")
+    st.markdown("---")
+    ST = PF.get('shared_tracker')
+    if ST:
+        render_tracker_track(
+            ST, "📡 5/26 추천종목 (Scouter 15선)",
+            f"진입 {ST['entry_date']} 시초가 · {len(ST['tickers'])}종목 동일가중 · SL {int(ST['sl']*100)}% + 재분배 · 순수 스마트머니(임상 미적용)",
+            "5/26")
+        st.markdown("---")
+    SB = PF.get('strong_buy_tracker')
+    if SB:
+        render_tracker_track(
+            SB, "📡 6/25 Strong Buy 보드",
+            f"진입 {SB['entry_date']} 시초가 · {len(SB['tickers'])}종목 동일가중 · SL {int(SB['sl']*100)}% + 재분배 · 순수 스마트머니(임상 미적용)",
+            "6/25")
 
 
 # ═══ Page: Core New ═══
@@ -1215,163 +1272,6 @@ elif page == TERMINAL_PAGE:
         st.caption(f"Satellite 유니버스 스코어링 종목 {len(_qs)}개 중 상위 15 · 임상 QS ≥ 0.55 강조")
     except Exception as e:
         st.info(f"QS 데이터를 불러오지 못했습니다: {e}")
-
-    # ── Live paper portfolio (track record / proof) ──
-    st.markdown("---")
-    st.markdown("### 🧬 With BERA AI — Satellite v2 (스마트머니 + 임상 AI 필터)")
-    st.caption(
-        f"진입 {SAT['entry_date']} · 시드 ${SAT['seed_usd']:,} · "
-        "바이오 헤지펀드 시그널 진입 + 베라 임상필터 통과 종목만 (임상 하위컷오프 적용)"
-    )
-
-    sat_tickers = [p['ticker'] for p in SAT['portfolio']]
-    sat_prices = get_prices_batch(sat_tickers)
-    prows = []
-    for p in SAT['portfolio']:
-        cur = sat_prices.get(p['ticker'], p['entry'])
-        if cur <= 0:
-            cur = p['entry']
-        qty = int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry'])
-        cost = qty * p['entry']
-        pnl = qty * cur - cost
-        prows.append({
-            'Ticker': p['ticker'], 'Weight': f"{p['weight_pct']}%",
-            '임상필터': '✓ pass',
-            'PnL%': pnl / cost * 100 if cost > 0 else 0,
-        })
-    pdf = pd.DataFrame(prows)
-    st.dataframe(
-        pdf.style.format({'PnL%': '{:+.1f}%'}).map(
-            lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
-                      ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
-            subset=['PnL%']),
-        width='stretch', hide_index=True)
-
-    sat_tqe = tuple((p['ticker'], int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry']), p['entry'])
-                    for p in SAT['portfolio'])
-    sat_cost = sum(q * e for _, q, e in sat_tqe)
-    sat_val = sum(sat_prices.get(t, e) * q for t, q, e in sat_tqe)
-    sat_pnl_pct = (sat_val / sat_cost - 1) * 100 if sat_cost > 0 else 0
-    show_bench(sat_pnl_pct, SAT['entry_date'], SAT['bench'], "Satellite", portfolio=sat_tqe)
-
-    # ── Second live paper portfolio: 2026-05-25 shared picks (5/26 open entry, SL-25% + redistribution) ──
-    ST = PF.get('shared_tracker')
-    if ST:
-        st.markdown("---")
-        st.markdown("### ⚪ Without BERA AI — 5/26 추천종목 (순수 스마트머니 · 임상필터 없음)")
-        st.caption(
-            f"진입 {ST['entry_date']} 시초가 · {len(ST['tickers'])}종목 동일가중 · "
-            f"SL {int(ST['sl']*100)}% + 동일비중 재분배 · Scouter Strong Buy 원본(임상 미적용)"
-        )
-        pr, trows, xbi_ret, n, daily_series = compute_shared_tracker(
-            tuple(ST['tickers']), ST['entry_date'], ST['sl'], ST['vol_mult'], ST['drop_th'], ST['hold'])
-        if pr is not None:
-            held = [r for r in trows if r['상태'] == '보유']
-            exited = [r for r in trows if r['상태'] != '보유']
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Portfolio", f"{pr:+.2f}%")
-            c2.metric("보유 / 손절", f"{len(held)} / {len(exited)}")
-            c3.metric("Entry", ST['entry_date'])
-
-            # SL'd names: shown as a notice (like Core Live), removed from the table.
-            if exited:
-                parts = []
-                for r in exited:
-                    why, _, dt = r['상태'].partition('@')
-                    parts.append(f"{r['Ticker']} {r['PnL%']:+.1f}% ({why} {dt})")
-                st.warning("🛑 손절 (포트폴리오 수익률에 이미 반영됨): " + " · ".join(parts))
-
-            if held:
-                hdf = pd.DataFrame(held)[['Ticker', 'Entry', 'Current', 'PnL%']]
-                st.dataframe(
-                    hdf.style.format({'Entry': '${:.2f}', 'Current': '${:.2f}', 'PnL%': '{:+.1f}%'}).map(
-                        lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
-                                  ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
-                        subset=['PnL%']),
-                    width='stretch', hide_index=True)
-
-            show_bench(pr, ST['entry_date'], ST['bench'], "추천종목", bera_daily_override=daily_series)
-            st.caption("※ 표본 기간이 짧은 단기·소형주 변동성 구간입니다. 누적 기간이 길어질수록 벤치마크 비교 의미가 커집니다.")
-        else:
-            st.info("트래커 데이터를 불러오지 못했습니다.")
-
-    # ── Third live paper portfolio: 2026-06-25 Strong Buy board (6/25 open entry, SL-30% + redistribution, 오래됨 제외) ──
-    SB = PF.get('strong_buy_tracker')
-    if SB:
-        st.markdown("---")
-        st.markdown("### ⚪ Without BERA AI — 6/25 Strong Buy 보드 (순수 스마트머니 · 임상필터 없음)")
-        st.caption(
-            f"진입 {SB['entry_date']} 시초가 · {len(SB['tickers'])}종목 동일가중 · "
-            f"SL {int(SB['sl']*100)}% 종가기준 + 생존종목 동일비중 재분배 · Scouter Strong Buy 원본(임상 미적용) · {SB.get('exclude_note', '')}"
-        )
-        pr, trows, xbi_ret, n, daily_series = compute_shared_tracker(
-            tuple(SB['tickers']), SB['entry_date'], SB['sl'], SB['vol_mult'], SB['drop_th'], SB['hold'])
-        if pr is not None:
-            held = [r for r in trows if r['상태'] == '보유']
-            exited = [r for r in trows if r['상태'] != '보유']
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Portfolio", f"{pr:+.2f}%")
-            c2.metric("보유 / 손절", f"{len(held)} / {len(exited)}")
-            c3.metric("Entry", SB['entry_date'])
-
-            if exited:
-                parts = []
-                for r in exited:
-                    why, _, dt = r['상태'].partition('@')
-                    parts.append(f"{r['Ticker']} {r['PnL%']:+.1f}% ({why} {dt})")
-                st.warning("🛑 손절 (포트폴리오 수익률에 이미 반영됨): " + " · ".join(parts))
-
-            if held:
-                hdf = pd.DataFrame(held)[['Ticker', 'Entry', 'Current', 'PnL%']]
-                st.dataframe(
-                    hdf.style.format({'Entry': '${:.2f}', 'Current': '${:.2f}', 'PnL%': '{:+.1f}%'}).map(
-                        lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
-                                  ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
-                        subset=['PnL%']),
-                    width='stretch', hide_index=True)
-
-            show_bench(pr, SB['entry_date'], SB['bench'], "추천종목", bera_daily_override=daily_series)
-            st.caption("※ 표본 기간이 짧은 단기·소형주 변동성 구간입니다. 누적 기간이 길어질수록 벤치마크 비교 의미가 커집니다.")
-        else:
-            st.info("트래커 데이터를 불러오지 못했습니다.")
-
-    # ── With BERA AI: Config H (2026-07-16 re-discovery) ──
-    CH = PF.get('config_h_0714')
-    if CH:
-        st.markdown("---")
-        st.markdown("### 🧬 With BERA AI — Config H (7/14 재발굴)")
-        st.caption(
-            f"진입 {CH['entry_date']} 시가 · {len(CH['tickers'])}종목 동일가중 · "
-            f"스마트머니 스코어 + 임상 AI 게이트(prob≥0.5, 3yr P2/3) · "
-            f"SL {int(CH['sl']*100)}% + vol3x/일간{int(CH['drop_th']*100)}% exit + hold{CH['hold']}d · {CH['backtest_note']}"
-        )
-        pr, trows, xbi_ret, n, daily_series = compute_shared_tracker(
-            tuple(CH['tickers']), CH['entry_date'], CH['sl'], CH['vol_mult'], CH['drop_th'], CH['hold'])
-        if pr is not None:
-            held = [r for r in trows if r['상태'] == '보유']
-            exited = [r for r in trows if r['상태'] != '보유']
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Portfolio", f"{pr:+.2f}%")
-            c2.metric("보유 / 손절", f"{len(held)} / {len(exited)}")
-            c3.metric("Entry", CH['entry_date'])
-            if exited:
-                parts = []
-                for r in exited:
-                    why, _, dt = r['상태'].partition('@')
-                    parts.append(f"{r['Ticker']} {r['PnL%']:+.1f}% ({why} {dt})")
-                st.warning("🛑 손절 (수익률에 반영됨): " + " · ".join(parts))
-            if held:
-                hdf = pd.DataFrame(held)[['Ticker', 'Entry', 'Current', 'PnL%']]
-                st.dataframe(
-                    hdf.style.format({'Entry': '${:.2f}', 'Current': '${:.2f}', 'PnL%': '{:+.1f}%'}).map(
-                        lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
-                                  ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
-                        subset=['PnL%']),
-                    width='stretch', hide_index=True)
-            show_bench(pr, CH['entry_date'], CH['bench'], "Config H", bera_daily_override=daily_series)
-            st.caption("※ 임상 AI 게이트 통과한 스마트머니 종목만 — 'Without BERA AI'(5/26·6/25) 트랙과 성과 비교용.")
-        else:
-            st.info("트래커 데이터를 불러오지 못했습니다.")
 
     st.markdown("---")
     st.caption("BERA Satellite Signal Terminal · 기관 전용 · 무단 배포 금지")

@@ -962,6 +962,20 @@ Key observations:
     except Exception:
         universe_total = 814
 
+    # ── Family split by market-cap universe (Core $2B+ / Satellite $500M-$2B) ──
+    # Each strategy family screens a different cap band: Core picks large-cap ($2B+),
+    # Satellite picks small-cap ($500M-$2B, per satellite_backtest.py MIN/MAX_MCAP).
+    fam = st.radio(
+        "전략 계열 (시총 유니버스)",
+        ["🔵 Core ($2B+)", "🟢 Satellite ($500M–$2B)", "전체"],
+        horizontal=True, key="qs_family",
+    )
+    if 'market_cap' in scores_df.columns:
+        if fam.startswith("🔵"):
+            scores_df = scores_df[scores_df['market_cap'] >= 2e9]
+        elif fam.startswith("🟢"):
+            scores_df = scores_df[(scores_df['market_cap'] >= 5e8) & (scores_df['market_cap'] < 2e9)]
+
     scored_count = len(scores_df)
     unscored_count = universe_total - scored_count
 
@@ -1171,17 +1185,17 @@ elif page == TERMINAL_PAGE:
 - 기관 지분: 바이오 헤지펀드가 포지션을 잡았지만 주가는 아직 반응하지 않은 종목에 진입.
 - 공매도 · 내부자 매수: 빠르게 반영되는 시그널이라 공시 직후 진입.
 - Cross: 기관 지분과 내부자 매수가 함께 잡히는, 가장 확신이 높은 케이스.
-- 임상 AI: 모든 후보에 베라의 임상 성공확률 예측을 함께 반영합니다.
+- 임상 AI (BERA): 스마트머니 시그널에 베라의 임상 성공확률 예측을 얹은 트랙("With BERA AI")과 순수 스마트머니 트랙("Without BERA AI")을 함께 운용해, 임상필터의 성과 기여를 라이브로 비교합니다.
 
 퇴출은 손절 · 급락 · 보유기간 규율로 관리합니다. 세부 기준은 비공개입니다.
 """)
 
     # ── Live paper portfolio (track record / proof) ──
     st.markdown("---")
-    st.markdown("### Live Paper Portfolio — 실시간 트랙레코드")
+    st.markdown("### 🧬 With BERA AI — Satellite v2 (스마트머니 + 임상 AI 필터)")
     st.caption(
         f"진입 {SAT['entry_date']} · 시드 ${SAT['seed_usd']:,} · "
-        "전 종목 바이오 헤지펀드 보유 시그널 진입 · 임상필터 통과"
+        "바이오 헤지펀드 시그널 진입 + 베라 임상필터 통과 종목만 (임상 하위컷오프 적용)"
     )
 
     sat_tickers = [p['ticker'] for p in SAT['portfolio']]
@@ -1218,10 +1232,10 @@ elif page == TERMINAL_PAGE:
     ST = PF.get('shared_tracker')
     if ST:
         st.markdown("---")
-        st.markdown("### Live Paper Portfolio — 2026-05-25 추천종목")
+        st.markdown("### ⚪ Without BERA AI — 5/26 추천종목 (순수 스마트머니 · 임상필터 없음)")
         st.caption(
             f"진입 {ST['entry_date']} 시초가 · {len(ST['tickers'])}종목 동일가중 · "
-            f"SL {int(ST['sl']*100)}% + 동일비중 재분배"
+            f"SL {int(ST['sl']*100)}% + 동일비중 재분배 · Scouter Strong Buy 원본(임상 미적용)"
         )
         pr, trows, xbi_ret, n, daily_series = compute_shared_tracker(
             tuple(ST['tickers']), ST['entry_date'], ST['sl'], ST['vol_mult'], ST['drop_th'], ST['hold'])
@@ -1259,10 +1273,10 @@ elif page == TERMINAL_PAGE:
     SB = PF.get('strong_buy_tracker')
     if SB:
         st.markdown("---")
-        st.markdown("### Live Paper Portfolio — 2026-06-25 추천종목 (Strong Buy)")
+        st.markdown("### ⚪ Without BERA AI — 6/25 Strong Buy 보드 (순수 스마트머니 · 임상필터 없음)")
         st.caption(
             f"진입 {SB['entry_date']} 시초가 · {len(SB['tickers'])}종목 동일가중 · "
-            f"SL {int(SB['sl']*100)}% 종가기준 + 생존종목 동일비중 재분배 · {SB.get('exclude_note', '')}"
+            f"SL {int(SB['sl']*100)}% 종가기준 + 생존종목 동일비중 재분배 · Scouter Strong Buy 원본(임상 미적용) · {SB.get('exclude_note', '')}"
         )
         pr, trows, xbi_ret, n, daily_series = compute_shared_tracker(
             tuple(SB['tickers']), SB['entry_date'], SB['sl'], SB['vol_mult'], SB['drop_th'], SB['hold'])

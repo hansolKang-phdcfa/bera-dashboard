@@ -619,15 +619,6 @@ elif page == "🎯 Satellite · QS+Market":
     sat_tqe = tuple((p['ticker'], int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry']), p['entry']) for p in SAT['portfolio'])
     show_bench(tpp, SAT['entry_date'], SAT['bench'], "Satellite v2", portfolio=sat_tqe)
 
-    # ── Config H (7/14) ──
-    st.markdown("---")
-    CH = PF.get('config_h_0714')
-    if CH:
-        render_tracker_track(
-            CH, "🧬 Config H (7/14 재발굴)",
-            f"진입 {CH['entry_date']} 시가 · {len(CH['tickers'])}종목 동일가중 · 스마트머니 스코어 + 임상 AI 게이트(prob≥0.5, 3yr P2/3) · SL-30/vol3x/drop-7%/hold120 · {CH['backtest_note']}",
-            "Config H")
-
     # ── Config H (6/18) ──
     st.markdown("---")
     PA = PF.get('config_h_pit_0618a')
@@ -636,13 +627,24 @@ elif page == "🎯 Satellite · QS+Market":
             PA, "🧬 Config H (6/18)",
             f"진입 {PA['entry_date']} 시가 · {len(PA['tickers'])}종목 동일가중 · SL-30/vol3x/drop-7%/hold120",
             "Config H 6/18")
+
+    # ── Config H (6/22) ──
+    st.markdown("---")
     PB = PF.get('config_h_pit_0618b')
     if PB:
-        st.markdown("---")
         render_tracker_track(
             PB, "🧬 Config H (6/22)",
             f"진입 {PB['entry_date']} 시가 · {len(PB['tickers'])}종목 동일가중 · SL-30/vol3x/drop-7%/hold120",
             "Config H 6/22")
+
+    # ── Config H (7/14) ──
+    st.markdown("---")
+    CH = PF.get('config_h_0714')
+    if CH:
+        render_tracker_track(
+            CH, "🧬 Config H (7/14 재발굴)",
+            f"진입 {CH['entry_date']} 시가 · {len(CH['tickers'])}종목 동일가중 · 스마트머니 스코어 + 임상 AI 게이트(prob≥0.5, 3yr P2/3) · SL-30/vol3x/drop-7%/hold120 · {CH['backtest_note']}",
+            "Config H")
 
 
 # ═══ Page: Satellite · Market-only (Without BERA AI) ═══

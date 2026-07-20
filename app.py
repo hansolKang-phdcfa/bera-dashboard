@@ -646,6 +646,18 @@ elif page == "🎯 Satellite · QS+Market":
             f"진입 {CH['entry_date']} 시가 · {len(CH['tickers'])}종목 동일가중 · 스마트머니 스코어 + 임상 AI 게이트(prob≥0.5, 3yr P2/3) · SL-30/vol3x/drop-7%/hold120 · {CH['backtest_note']}",
             "Config H")
 
+    # ── 롤링 검증 코호트 (다른 진입 시점, PIT) ──
+    st.markdown("---")
+    st.markdown("### 🧪 롤링 검증 — 다른 진입 시점 (PIT)")
+    st.caption("진입 시점을 바꿔 발굴한 코호트(그 시점 데이터만). 현재 XBI 초과 유지 확인용.")
+    for _key, _disc in [('config_h_pit_0527', '5/27'), ('config_h_pit_0610', '6/10')]:
+        _cfg = PF.get(_key)
+        if _cfg:
+            render_tracker_track(
+                _cfg, f"🧬 Config H ({_disc} 발굴)",
+                f"진입 {_cfg['entry_date']} 시가 · {len(_cfg['tickers'])}종목 동일가중 · SL-30/vol3x/drop-7%/hold120",
+                f"Config H {_disc}")
+
 
 # ═══ Page: Satellite · Market-only (Without BERA AI) ═══
 elif page == "📡 Satellite · Market-only":

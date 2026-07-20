@@ -885,5 +885,53 @@
       "AVTX",
       "ORKA"
     ]
+  },
+  "config_h_pit_0527": {
+    "engine": "Config H",
+    "entry_date": "2026-05-28",
+    "sl": -0.3,
+    "vol_mult": 3.0,
+    "drop_th": -0.07,
+    "hold": 120,
+    "bench": {
+      "XBI": 134.1
+    },
+    "note": "5/27 발굴 → 5/28 진입 (PIT).",
+    "tickers": [
+      "PVLA",
+      "NKTR",
+      "IKT",
+      "ALT",
+      "APGE",
+      "CRVS",
+      "SABS",
+      "ALXO",
+      "RZLT",
+      "AVTX"
+    ]
+  },
+  "config_h_pit_0610": {
+    "engine": "Config H",
+    "entry_date": "2026-06-11",
+    "sl": -0.3,
+    "vol_mult": 3.0,
+    "drop_th": -0.07,
+    "hold": 120,
+    "bench": {
+      "XBI": 129.01
+    },
+    "note": "6/10 발굴 → 6/11 진입 (PIT).",
+    "tickers": [
+      "IKT",
+      "APGE",
+      "IRON",
+      "RZLT",
+      "AVTX",
+      "PALI",
+      "ORKA",
+      "CABA",
+      "KPTI",
+      "OCUL"
+    ]
   }
 }

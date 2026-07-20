@@ -514,9 +514,7 @@
     "entry_date": "2026-06-05",
     "seed_usd": 10000,
     "bench": {
-      "XBI": 128.67,
-      "SPY": 737.4,
-      "QQQ": 705.21
+      "XBI": 128.67
     },
     "entry_note": "Entry: 2026-06-05 4:00 PM ET | Seed: $10,000 | Smart money + clinical AI scoring",
     "backtest_note": "Backtest: CAGR 83.8%, Sharpe 1.98, MDD -45.4% (3.1yr)",
@@ -623,9 +621,7 @@
     "drop_th": -0.07,
     "hold": 120,
     "bench": {
-      "XBI": 132.34,
-      "SPY": 748.08,
-      "QQQ": 725.16
+      "XBI": 132.34
     },
     "tickers": [
       "TRDA",
@@ -653,9 +649,7 @@
     "drop_th": -9.99,
     "hold": 99999,
     "bench": {
-      "XBI": 149.89,
-      "SPY": 738.91,
-      "QQQ": 725.9
+      "XBI": 149.89
     },
     "exclude_note": "❄ 오래됨(>180d) 제외 + 투자가능 게이트(시총 ≥$100M & 주가 ≥$1) 적용",
     "tickers": [
@@ -827,9 +821,7 @@
     "drop_th": -0.07,
     "hold": 120,
     "bench": {
-      "XBI": 155.45,
-      "SPY": 751.83,
-      "QQQ": 719.69
+      "XBI": 155.45
     },
     "backtest_note": "Backtest: CAGR 83.8%, Sharpe 1.98 (Satellite Config H)",
     "note": "스마트머니 스코어 + 임상 AI 게이트(prob>=0.5, 3yr P2/3). public us DB, AS_OF 2026-07-14(7/15 13G 제외, look-ahead 회피).",
@@ -854,9 +846,7 @@
     "drop_th": -0.07,
     "hold": 120,
     "bench": {
-      "XBI": 141.86,
-      "SPY": 747.76,
-      "QQQ": 736.39
+      "XBI": 141.86
     },
     "note": "6/17 발굴 → 6/18 시가 진입.",
     "tickers": [
@@ -880,9 +870,7 @@
     "drop_th": -0.07,
     "hold": 120,
     "bench": {
-      "XBI": 143.53,
-      "SPY": 747.7,
-      "QQQ": 742.02
+      "XBI": 143.53
     },
     "note": "6/18 발굴 → 6/22 시가 진입.",
     "tickers": [
@@ -896,102 +884,6 @@
       "IRON",
       "AVTX",
       "ORKA"
-    ]
-  },
-  "config_h_rolling": {
-    "as_of": "2026-07-17",
-    "method": "4/15~6/17 매주 발굴(그 시점 데이터만, look-ahead 차단) → 발굴 익일 진입 → 현재까지 보유(Config H SL-30/vol3x/drop-7%/hold120)",
-    "cohorts": [
-      {
-        "disc": "4/15",
-        "entry": "4/16",
-        "days": 63,
-        "port": 55.5,
-        "xbi": 14.0,
-        "exc": 41.6,
-        "carry": "FBRX"
-      },
-      {
-        "disc": "4/22",
-        "entry": "4/23",
-        "days": 58,
-        "port": 52.1,
-        "xbi": 14.8,
-        "exc": 37.3,
-        "carry": "FBRX"
-      },
-      {
-        "disc": "4/29",
-        "entry": "4/30",
-        "days": 53,
-        "port": 44.0,
-        "xbi": 17.6,
-        "exc": 26.4,
-        "carry": "FBRX"
-      },
-      {
-        "disc": "5/06",
-        "entry": "5/07",
-        "days": 48,
-        "port": 43.3,
-        "xbi": 15.5,
-        "exc": 27.8,
-        "carry": "FBRX"
-      },
-      {
-        "disc": "5/13",
-        "entry": "5/14",
-        "days": 43,
-        "port": 32.7,
-        "xbi": 14.5,
-        "exc": 18.2,
-        "carry": "KYMR"
-      },
-      {
-        "disc": "5/20",
-        "entry": "5/21",
-        "days": 38,
-        "port": 16.5,
-        "xbi": 16.3,
-        "exc": 0.2,
-        "carry": "PVLA"
-      },
-      {
-        "disc": "5/27",
-        "entry": "5/28",
-        "days": 34,
-        "port": 21.6,
-        "xbi": 13.6,
-        "exc": 8.1,
-        "carry": "APGE"
-      },
-      {
-        "disc": "6/03",
-        "entry": "6/04",
-        "days": 29,
-        "port": 17.9,
-        "xbi": 15.7,
-        "exc": 2.2,
-        "carry": "ORKA"
-      },
-      {
-        "disc": "6/10",
-        "entry": "6/11",
-        "days": 24,
-        "port": 19.8,
-        "xbi": 16.3,
-        "exc": 3.5,
-        "carry": "APGE"
-      },
-      {
-        "disc": "6/17",
-        "entry": "6/18",
-        "days": 19,
-        "port": 13.4,
-        "xbi": 9.7,
-        "exc": 3.7,
-        "carry": "APGE"
-      }
     ]
   }
 }

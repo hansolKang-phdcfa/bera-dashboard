@@ -337,20 +337,13 @@ def render_tracker_track(cfg, title, sub_caption, bench_label):
         return
     held = [r for r in trows if r['상태'] == '보유']
     exited = [r for r in trows if r['상태'] != '보유']
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Portfolio", f"{pr:+.2f}%")
-    c2.metric("보유 / 손절", f"{len(held)} / {len(exited)}")
-    c3.metric("Entry", cfg['entry_date'])
     if exited:
-        parts = []
-        for r in exited:
-            why, _, dt = r['상태'].partition('@')
-            parts.append(f"{r['Ticker']} {r['PnL%']:+.1f}% ({why} {dt})")
-        st.warning("🛑 손절 (수익률에 반영됨): " + " · ".join(parts))
+        parts = [f"{r['Ticker']} {r['PnL%']:+.1f}% ({r['상태'].partition('@')[0]})" for r in exited]
+        st.caption("🛑 손절(수익률 반영됨): " + " · ".join(parts))
     if held:
-        hdf = pd.DataFrame(held)[['Ticker', 'Entry', 'Current', 'PnL%']]
+        hdf = pd.DataFrame(held)[['Ticker', 'PnL%']]
         st.dataframe(
-            hdf.style.format({'Entry': '${:.2f}', 'Current': '${:.2f}', 'PnL%': '{:+.1f}%'}).map(
+            hdf.style.format({'PnL%': '{:+.1f}%'}).map(
                 lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
                           ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
                 subset=['PnL%']),
@@ -586,37 +579,24 @@ elif page == "🎯 Satellite · QS+Market":
 
     # ── Satellite v2 (6/5) ──
     st.markdown("### 🧬 Satellite v2 (6/5)")
-    st.markdown(SAT['entry_note'])
-    st.markdown(SAT['backtest_note'])
+    st.caption(f"{SAT['entry_note']} · {SAT['backtest_note']}")
     tickers = [p['ticker'] for p in SAT['portfolio']]
     prices = get_prices_batch(tickers)
     rows = []
     for p in SAT['portfolio']:
         cur = prices.get(p['ticker'], p['entry'])
         if cur <= 0: cur = p['entry']
-        alloc = SAT['seed_usd'] * p['weight_pct'] / 100
-        qty = int(alloc / p['entry'])
-        cost = qty * p['entry']; val = qty * cur; pnl = val - cost
-        rows.append({'Ticker': p['ticker'], 'Weight': f"{p['weight_pct']}%",
-                      'Prob': p['prob'], 'Entry': p['entry'], 'Current': cur,
-                      'Value': val, 'PnL': pnl, 'PnL%': pnl/cost*100 if cost>0 else 0,
-                      'Smart Money': p['smart_money']})
-    df = pd.DataFrame(rows)
-    tc = df['Value'].sum(); tp = df['PnL'].sum()
-    tpp = tp / (tc - tp) * 100 if (tc - tp) > 0 else 0
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Active", f"{len(SAT['portfolio'])} / {SAT['max_slots']} slots")
-    c2.metric("Invested", f"${tc:,.0f}")
-    c3.metric("PnL", f"${tp:+,.0f}", delta=f"{tpp:+.2f}%")
-    c4.metric("Slots Available", f"{SAT['max_slots'] - len(SAT['portfolio'])}")
-    st.dataframe(df.style.format({
-        'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
-        'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'
-    }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
-                ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
-                subset=['PnL','PnL%']),
+        rows.append({'Ticker': p['ticker'], 'PnL%': (cur / p['entry'] - 1) * 100})
+    st.dataframe(
+        pd.DataFrame(rows).style.format({'PnL%': '{:+.1f}%'}).map(
+            lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
+                      ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
+            subset=['PnL%']),
         width='stretch', hide_index=True)
     sat_tqe = tuple((p['ticker'], int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry']), p['entry']) for p in SAT['portfolio'])
+    sat_cost = sum(q * e for _, q, e in sat_tqe)
+    sat_val = sum(prices.get(t, e) * q for t, q, e in sat_tqe)
+    tpp = (sat_val / sat_cost - 1) * 100 if sat_cost > 0 else 0
     show_bench(tpp, SAT['entry_date'], SAT['bench'], "Satellite v2", portfolio=sat_tqe)
 
     # ── Config H (6/18) ──
@@ -645,37 +625,6 @@ elif page == "🎯 Satellite · QS+Market":
             CH, "🧬 Config H (7/14 재발굴)",
             f"진입 {CH['entry_date']} 시가 · {len(CH['tickers'])}종목 동일가중 · 스마트머니 스코어 + 임상 AI 게이트(prob≥0.5, 3yr P2/3) · SL-30/vol3x/drop-7%/hold120 · {CH['backtest_note']}",
             "Config H")
-
-    # ── 롤링 진입 강건성 점검 (접이식, 기본 접힘) ──
-    st.markdown("---")
-    RC = PF.get('config_h_rolling')
-    if RC:
-        with st.expander("🔬 롤링 진입 강건성 점검 — 진입 시점을 바꿔도 이벤트알파가 남는가", expanded=False):
-            st.caption(
-                f"기준일 {RC['as_of']} · 특정 발굴일·종목 운이 아님을 점검하는 자료(전시용 아님). "
-                f"{RC['method']}"
-            )
-            rc = pd.DataFrame(RC['cohorts']).rename(columns={
-                'disc': '발굴', 'entry': '진입', 'days': '보유일',
-                'port': '포트%', 'xbi': 'XBI%', 'exc': '초과%p', 'carry': '캐리'})
-            st.dataframe(
-                rc.style.format({'포트%': '{:+.1f}%', 'XBI%': '{:+.1f}%', '초과%p': '{:+.1f}'}).map(
-                    lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
-                              ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
-                    subset=['포트%', '초과%p']),
-                width='stretch', hide_index=True)
-            excs = [c['exc'] for c in RC['cohorts']]
-            wins = sum(1 for e in excs if e > 0)
-            carries = len(set(c['carry'] for c in RC['cohorts']))
-            st.markdown(
-                f"**XBI 이긴 코호트 {wins}/{len(excs)} · 평균 초과 {np.mean(excs):+.1f}%p · 캐리 {carries}종** "
-                "— 진입 시점마다 다른 종목이 캐리(특정 베팅 아님)."
-            )
-            st.caption(
-                "⚠ 정직한 한계: ① 승자 1종 제외 시 나머지는 대부분 XBI 이하(이벤트로 버는 tail-의존 전략, 설계상 특성) "
-                "② 코호트간 종목 겹침이 있어 독립 승수는 표보다 적음(FBRX·APGE가 여러 코호트 캐리) "
-                "③ 앞 코호트일수록 보유기간이 길어 누적이 큼. → 반복성 근거는 3.1년 백테스트, 이 표는 최근 슬라이스의 방향성 점검."
-            )
 
 
 # ═══ Page: Satellite · Market-only (Without BERA AI) ═══

@@ -1,6 +1,6 @@
 """BERA Dashboard — Public Web Version
 ======================================
-Core tracks: Core (5/18, v1) | Core (5/28, v2) | Core (6/5, v3) | Core (7/17, v4) | Satellite v2
+Core tracks: Core (5/18, v1) | Core (5/28, v2) | Core (6/5, v3) | Core (6/30, v4) | Core (7/17, v5) | Satellite v2
 No strategy parameters exposed. No local DB dependency.
 Portfolio data loaded from data/portfolios.json (separate from UI code).
 """
@@ -373,8 +373,8 @@ CORE_PAGES = [
     "💰 Core (5/18, v1)",
     "🅰️ Core (5/28, v2)",
     "🏛️ Core (6/5, v3)",
-    "📅 Core v2 · 6/30 PIT",
-    "🚀 Core (7/17, v4)",
+    "🗓️ Core (6/30, v4)",
+    "🚀 Core (7/17, v5)",
 ]
 SATELLITE_PAGES = [
     "🎯 Satellite · QS+Market",
@@ -728,9 +728,9 @@ elif page == "🏛️ Core (6/5, v3)":
     show_bench(tpp, CNEW['entry_date'], CNEW['bench'], "Core (6/5, v3)", portfolio=cnew_tqe)
 
 
-# ═══ Page: Core (7/17, v4) ═══
-elif page == "🚀 Core (7/17, v4)":
-    st.title("Core (7/17, v4) -- 2026-07-17 신규 발굴 트랙")
+# ═══ Page: Core (7/17, v5) ═══
+elif page == "🚀 Core (7/17, v5)":
+    st.title("Core (7/17, v5) -- 2026-07-17 신규 발굴 트랙")
     st.caption("🔵 Core 계열 · Core v2 전략(순수 prob top20 + SI-drop) · 시총 $2B+ · 벤치 IBB/SPY/QQQ · 동일가중")
     st.markdown(CV2['entry_note'])
     st.markdown(CV2['backtest_note'])
@@ -773,13 +773,13 @@ elif page == "🚀 Core (7/17, v4)":
     show_charts(df)
     st.markdown("---")
     cv2_tqe = tuple((p['ticker'], max(1, int(CV2['seed_usd'] * p['weight_mult'] / total_mult / p['entry'])), p['entry']) for p in CV2['portfolio'])
-    show_bench(tpp, CV2['entry_date'], CV2['bench'], "Core (7/17, v4)", portfolio=cv2_tqe)
+    show_bench(tpp, CV2['entry_date'], CV2['bench'], "Core (7/17, v5)", portfolio=cv2_tqe)
 
 
-# ═══ Page: Core v2 · 6/30 PIT (별도 point-in-time 검증 트랙) ═══
-elif page == "📅 Core v2 · 6/30 PIT":
-    st.title("Core v2 · 6/30 PIT -- point-in-time 발굴")
-    st.caption("🔵 Core 계열 · 시총 $2B+ · 벤치 IBB · 라이브 아님(사후 검증 코호트)")
+# ═══ Page: Core (6/30, v4) — 6/30 PIT 발굴 코호트 ═══
+elif page == "🗓️ Core (6/30, v4)":
+    st.title("Core (6/30, v4) -- 2026-06-30 발굴 코호트")
+    st.caption("🔵 Core 계열 · 시총 $2B+ · 벤치 IBB · Core v2 전략 as-of 6/30 발굴(PIT)")
     PIT = PF.get('core_v2_pit_0630')
     if PIT:
         st.markdown(PIT['note'] + " · " + PIT['backtest_note'])
@@ -808,7 +808,7 @@ elif page == "📅 Core v2 · 6/30 PIT":
                 ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''), subset=['PnL', 'PnL%']),
             width='stretch', hide_index=True)
         _tqe = tuple((p['ticker'], max(1, int(PIT['seed_usd'] * p['weight_mult'] / _tm / p['entry'])), p['entry']) for p in PIT['portfolio'])
-        show_bench(_tpp, PIT['entry_date'], PIT['bench'], "Core v2 6/30 PIT", portfolio=_tqe)
+        show_bench(_tpp, PIT['entry_date'], PIT['bench'], "Core (6/30, v4)", portfolio=_tqe)
 
 
 # ═══ Page: 종목별 상세 (Per-stock Detail) ═══

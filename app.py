@@ -646,6 +646,37 @@ elif page == "🎯 Satellite · QS+Market":
             f"진입 {CH['entry_date']} 시가 · {len(CH['tickers'])}종목 동일가중 · 스마트머니 스코어 + 임상 AI 게이트(prob≥0.5, 3yr P2/3) · SL-30/vol3x/drop-7%/hold120 · {CH['backtest_note']}",
             "Config H")
 
+    # ── 롤링 진입 강건성 점검 (접이식, 기본 접힘) ──
+    st.markdown("---")
+    RC = PF.get('config_h_rolling')
+    if RC:
+        with st.expander("🔬 롤링 진입 강건성 점검 — 진입 시점을 바꿔도 이벤트알파가 남는가", expanded=False):
+            st.caption(
+                f"기준일 {RC['as_of']} · 특정 발굴일·종목 운이 아님을 점검하는 자료(전시용 아님). "
+                f"{RC['method']}"
+            )
+            rc = pd.DataFrame(RC['cohorts']).rename(columns={
+                'disc': '발굴', 'entry': '진입', 'days': '보유일',
+                'port': '포트%', 'xbi': 'XBI%', 'exc': '초과%p', 'carry': '캐리'})
+            st.dataframe(
+                rc.style.format({'포트%': '{:+.1f}%', 'XBI%': '{:+.1f}%', '초과%p': '{:+.1f}'}).map(
+                    lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
+                              ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
+                    subset=['포트%', '초과%p']),
+                width='stretch', hide_index=True)
+            excs = [c['exc'] for c in RC['cohorts']]
+            wins = sum(1 for e in excs if e > 0)
+            carries = len(set(c['carry'] for c in RC['cohorts']))
+            st.markdown(
+                f"**XBI 이긴 코호트 {wins}/{len(excs)} · 평균 초과 {np.mean(excs):+.1f}%p · 캐리 {carries}종** "
+                "— 진입 시점마다 다른 종목이 캐리(특정 베팅 아님)."
+            )
+            st.caption(
+                "⚠ 정직한 한계: ① 승자 1종 제외 시 나머지는 대부분 XBI 이하(이벤트로 버는 tail-의존 전략, 설계상 특성) "
+                "② 코호트간 종목 겹침이 있어 독립 승수는 표보다 적음(FBRX·APGE가 여러 코호트 캐리) "
+                "③ 앞 코호트일수록 보유기간이 길어 누적이 큼. → 반복성 근거는 3.1년 백테스트, 이 표는 최근 슬라이스의 방향성 점검."
+            )
+
 
 # ═══ Page: Satellite · Market-only (Without BERA AI) ═══
 elif page == "📡 Satellite · Market-only":

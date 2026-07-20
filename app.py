@@ -373,8 +373,8 @@ CORE_PAGES = [
     "💰 Core (5/18, v1)",
     "🅰️ Core (5/28, v2)",
     "🏛️ Core (6/5, v3)",
-    "🚀 Core (7/17, v4)",
     "📅 Core v2 · 6/30 PIT",
+    "🚀 Core (7/17, v4)",
 ]
 SATELLITE_PAGES = [
     "🎯 Satellite · QS+Market",

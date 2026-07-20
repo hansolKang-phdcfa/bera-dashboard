@@ -337,13 +337,20 @@ def render_tracker_track(cfg, title, sub_caption, bench_label):
         return
     held = [r for r in trows if r['상태'] == '보유']
     exited = [r for r in trows if r['상태'] != '보유']
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Portfolio", f"{pr:+.2f}%")
+    c2.metric("보유 / 손절", f"{len(held)} / {len(exited)}")
+    c3.metric("Entry", cfg['entry_date'])
     if exited:
-        parts = [f"{r['Ticker']} {r['PnL%']:+.1f}% ({r['상태'].partition('@')[0]})" for r in exited]
-        st.caption("🛑 손절(수익률 반영됨): " + " · ".join(parts))
+        parts = []
+        for r in exited:
+            why, _, dt = r['상태'].partition('@')
+            parts.append(f"{r['Ticker']} {r['PnL%']:+.1f}% ({why} {dt})")
+        st.warning("🛑 손절 (수익률에 반영됨): " + " · ".join(parts))
     if held:
-        hdf = pd.DataFrame(held)[['Ticker', 'PnL%']]
+        hdf = pd.DataFrame(held)[['Ticker', 'Entry', 'Current', 'PnL%']]
         st.dataframe(
-            hdf.style.format({'PnL%': '{:+.1f}%'}).map(
+            hdf.style.format({'Entry': '${:.2f}', 'Current': '${:.2f}', 'PnL%': '{:+.1f}%'}).map(
                 lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
                           ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
                 subset=['PnL%']),
@@ -579,24 +586,37 @@ elif page == "🎯 Satellite · QS+Market":
 
     # ── Satellite v2 (6/5) ──
     st.markdown("### 🧬 Satellite v2 (6/5)")
-    st.caption(f"{SAT['entry_note']} · {SAT['backtest_note']}")
+    st.markdown(SAT['entry_note'])
+    st.markdown(SAT['backtest_note'])
     tickers = [p['ticker'] for p in SAT['portfolio']]
     prices = get_prices_batch(tickers)
     rows = []
     for p in SAT['portfolio']:
         cur = prices.get(p['ticker'], p['entry'])
         if cur <= 0: cur = p['entry']
-        rows.append({'Ticker': p['ticker'], 'PnL%': (cur / p['entry'] - 1) * 100})
-    st.dataframe(
-        pd.DataFrame(rows).style.format({'PnL%': '{:+.1f}%'}).map(
-            lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
-                      ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
-            subset=['PnL%']),
+        alloc = SAT['seed_usd'] * p['weight_pct'] / 100
+        qty = int(alloc / p['entry'])
+        cost = qty * p['entry']; val = qty * cur; pnl = val - cost
+        rows.append({'Ticker': p['ticker'], 'Weight': f"{p['weight_pct']}%",
+                      'Prob': p['prob'], 'Entry': p['entry'], 'Current': cur,
+                      'Value': val, 'PnL': pnl, 'PnL%': pnl/cost*100 if cost>0 else 0,
+                      'Smart Money': p['smart_money']})
+    df = pd.DataFrame(rows)
+    tc = df['Value'].sum(); tp = df['PnL'].sum()
+    tpp = tp / (tc - tp) * 100 if (tc - tp) > 0 else 0
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Active", f"{len(SAT['portfolio'])} / {SAT['max_slots']} slots")
+    c2.metric("Invested", f"${tc:,.0f}")
+    c3.metric("PnL", f"${tp:+,.0f}", delta=f"{tpp:+.2f}%")
+    c4.metric("Slots Available", f"{SAT['max_slots'] - len(SAT['portfolio'])}")
+    st.dataframe(df.style.format({
+        'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
+        'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'
+    }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
+                ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
+                subset=['PnL','PnL%']),
         width='stretch', hide_index=True)
     sat_tqe = tuple((p['ticker'], int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry']), p['entry']) for p in SAT['portfolio'])
-    sat_cost = sum(q * e for _, q, e in sat_tqe)
-    sat_val = sum(prices.get(t, e) * q for t, q, e in sat_tqe)
-    tpp = (sat_val / sat_cost - 1) * 100 if sat_cost > 0 else 0
     show_bench(tpp, SAT['entry_date'], SAT['bench'], "Satellite v2", portfolio=sat_tqe)
 
     # ── Config H (6/18) ──

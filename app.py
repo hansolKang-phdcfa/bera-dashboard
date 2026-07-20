@@ -374,6 +374,7 @@ CORE_PAGES = [
     "🅰️ Core (5/28, v2)",
     "🏛️ Core (6/5, v3)",
     "🚀 Core (7/17, v4)",
+    "📅 Core v2 · 6/30 PIT",
 ]
 SATELLITE_PAGES = [
     "🎯 Satellite · QS+Market",
@@ -774,12 +775,14 @@ elif page == "🚀 Core (7/17, v4)":
     cv2_tqe = tuple((p['ticker'], max(1, int(CV2['seed_usd'] * p['weight_mult'] / total_mult / p['entry'])), p['entry']) for p in CV2['portfolio'])
     show_bench(tpp, CV2['entry_date'], CV2['bench'], "Core (7/17, v4)", portfolio=cv2_tqe)
 
-    # ── Core v2 · 6/30 PIT (point-in-time 발굴, buy-hold + 월말 -15% SL) ──
+
+# ═══ Page: Core v2 · 6/30 PIT (별도 point-in-time 검증 트랙) ═══
+elif page == "📅 Core v2 · 6/30 PIT":
+    st.title("Core v2 · 6/30 PIT -- point-in-time 발굴")
+    st.caption("🔵 Core 계열 · 시총 $2B+ · 벤치 IBB · 라이브 아님(사후 검증 코호트)")
     PIT = PF.get('core_v2_pit_0630')
     if PIT:
-        st.markdown("---")
-        st.markdown("### 📅 Core v2 · 6/30 PIT (point-in-time 발굴)")
-        st.caption(PIT['note'] + " · " + PIT['backtest_note'])
+        st.markdown(PIT['note'] + " · " + PIT['backtest_note'])
         _tk = [p['ticker'] for p in PIT['portfolio']]
         _pr = get_prices_batch(_tk)
         _tm = sum(p['weight_mult'] for p in PIT['portfolio'])

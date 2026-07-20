@@ -774,6 +774,39 @@ elif page == "🚀 Core (7/17, v4)":
     cv2_tqe = tuple((p['ticker'], max(1, int(CV2['seed_usd'] * p['weight_mult'] / total_mult / p['entry'])), p['entry']) for p in CV2['portfolio'])
     show_bench(tpp, CV2['entry_date'], CV2['bench'], "Core (7/17, v4)", portfolio=cv2_tqe)
 
+    # ── Core v2 · 6/30 PIT (point-in-time 발굴, buy-hold + 월말 -15% SL) ──
+    PIT = PF.get('core_v2_pit_0630')
+    if PIT:
+        st.markdown("---")
+        st.markdown("### 📅 Core v2 · 6/30 PIT (point-in-time 발굴)")
+        st.caption(PIT['note'] + " · " + PIT['backtest_note'])
+        _tk = [p['ticker'] for p in PIT['portfolio']]
+        _pr = get_prices_batch(_tk)
+        _tm = sum(p['weight_mult'] for p in PIT['portfolio'])
+        _rows = []
+        for p in PIT['portfolio']:
+            cur = _pr.get(p['ticker'], p['entry'])
+            if cur <= 0: cur = p['entry']
+            alloc = PIT['seed_usd'] * p['weight_mult'] / _tm
+            qty = max(1, int(alloc / p['entry']))
+            cost = qty * p['entry']; val = qty * cur; pnl = val - cost
+            _rows.append({'Ticker': p['ticker'], 'Prob': p['prob'], 'Entry': p['entry'],
+                          'Current': cur, 'Value': val, 'PnL': pnl, 'PnL%': pnl/cost*100 if cost>0 else 0})
+        _df = pd.DataFrame(_rows)
+        _tc = _df['Value'].sum(); _tp = _df['PnL'].sum()
+        _tpp = _tp / (_tc - _tp) * 100 if (_tc - _tp) > 0 else 0
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Portfolio", f"{_tpp:+.2f}%")
+        c2.metric("Invested", f"${_tc:,.0f}")
+        c3.metric("Entry", PIT['entry_date'])
+        st.dataframe(_df.style.format({'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
+            'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'}).map(
+            lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
+                ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''), subset=['PnL', 'PnL%']),
+            width='stretch', hide_index=True)
+        _tqe = tuple((p['ticker'], max(1, int(PIT['seed_usd'] * p['weight_mult'] / _tm / p['entry'])), p['entry']) for p in PIT['portfolio'])
+        show_bench(_tpp, PIT['entry_date'], PIT['bench'], "Core v2 6/30 PIT", portfolio=_tqe)
+
 
 # ═══ Page: 종목별 상세 (Per-stock Detail) ═══
 elif page == "📈 종목별 상세":

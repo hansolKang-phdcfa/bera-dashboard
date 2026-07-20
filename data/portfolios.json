@@ -933,5 +933,140 @@
       "KPTI",
       "OCUL"
     ]
+  },
+  "core_v2_pit_0630": {
+    "engine": "Core v2 (PIT)",
+    "entry_date": "2026-06-30",
+    "seed_usd": 50000,
+    "bench": {
+      "IBB": 190.19,
+      "SPY": 746.77,
+      "QQQ": 736.4
+    },
+    "backtest_note": "Backtest: CAGR 42.8%, Sharpe 1.23, MDD -32.5% (7.4yr)",
+    "note": "Core v2 전략(순수 prob top20 + SI-drop, 동일가중) point-in-time 발굴 as-of 2026-06-30. 월말 -15% SL(7/31 첫 체크).",
+    "max_slots": 20,
+    "portfolio": [
+      {
+        "ticker": "ALMS",
+        "weight_mult": 1.0,
+        "entry": 28.14,
+        "prob": 0.951
+      },
+      {
+        "ticker": "GPCR",
+        "weight_mult": 1.0,
+        "entry": 53.67,
+        "prob": 0.865
+      },
+      {
+        "ticker": "KOD",
+        "weight_mult": 1.0,
+        "entry": 38.96,
+        "prob": 0.793
+      },
+      {
+        "ticker": "GLUE",
+        "weight_mult": 1.0,
+        "entry": 24.2,
+        "prob": 0.793
+      },
+      {
+        "ticker": "OCUL",
+        "weight_mult": 1.0,
+        "entry": 9.82,
+        "prob": 0.758
+      },
+      {
+        "ticker": "RYTM",
+        "weight_mult": 1.0,
+        "entry": 111.03,
+        "prob": 0.738
+      },
+      {
+        "ticker": "DNLI",
+        "weight_mult": 1.0,
+        "entry": 25.72,
+        "prob": 0.715
+      },
+      {
+        "ticker": "COGT",
+        "weight_mult": 1.0,
+        "entry": 38.7,
+        "prob": 0.71
+      },
+      {
+        "ticker": "HALO",
+        "weight_mult": 1.0,
+        "entry": 78.27,
+        "prob": 0.708
+      },
+      {
+        "ticker": "CLDX",
+        "weight_mult": 1.0,
+        "entry": 37.21,
+        "prob": 0.707
+      },
+      {
+        "ticker": "MIRM",
+        "weight_mult": 1.0,
+        "entry": 117.07,
+        "prob": 0.686
+      },
+      {
+        "ticker": "RARE",
+        "weight_mult": 1.0,
+        "entry": 33.39,
+        "prob": 0.684
+      },
+      {
+        "ticker": "BMY",
+        "weight_mult": 1.0,
+        "entry": 56.98,
+        "prob": 0.683
+      },
+      {
+        "ticker": "GILD",
+        "weight_mult": 1.0,
+        "entry": 126.34,
+        "prob": 0.675
+      },
+      {
+        "ticker": "BMRN",
+        "weight_mult": 1.0,
+        "entry": 57.22,
+        "prob": 0.674
+      },
+      {
+        "ticker": "PFE",
+        "weight_mult": 1.0,
+        "entry": 24.08,
+        "prob": 0.671
+      },
+      {
+        "ticker": "ABCL",
+        "weight_mult": 1.0,
+        "entry": 7.85,
+        "prob": 0.665
+      },
+      {
+        "ticker": "BCRX",
+        "weight_mult": 1.0,
+        "entry": 10.0,
+        "prob": 0.664
+      },
+      {
+        "ticker": "ALNY",
+        "weight_mult": 1.0,
+        "entry": 301.03,
+        "prob": 0.664
+      },
+      {
+        "ticker": "AMGN",
+        "weight_mult": 1.0,
+        "entry": 362.12,
+        "prob": 0.654
+      }
+    ]
   }
 }

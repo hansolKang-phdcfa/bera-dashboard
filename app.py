@@ -628,6 +628,28 @@ elif page == "🎯 Satellite · QS+Market":
             f"진입 {CH['entry_date']} 시가 · {len(CH['tickers'])}종목 동일가중 · 스마트머니 스코어 + 임상 AI 게이트(prob≥0.5, 3yr P2/3) · SL-30/vol3x/drop-7%/hold120 · {CH['backtest_note']}",
             "Config H")
 
+    # ── PIT 재구성 (6/18 vintage, 사후 검증 · non-live) ──
+    st.markdown("---")
+    st.markdown("### 🔬 PIT 재구성 — 6/18 vintage (사후 검증 · non-live)")
+    st.caption(
+        "라이브 트랙이 아님. 6/17~6/18 시점에 '그때 사용 가능했던 데이터만'으로 Config H를 사후 재현. "
+        "시그널·가격은 발굴시점 이하로 컷(look-ahead 차단, SI 공표지연 가드), 임상 커버리지는 현재 교정본 사용. "
+        "발굴·진입 타이밍을 살짝 달리한 두 컷을 함께 표시 — 픽은 조금씩 달라져도 이벤트알파(vs XBI)가 남는지 확인용."
+    )
+    PA = PF.get('config_h_pit_0618a')
+    if PA:
+        render_tracker_track(
+            PA, "A. 6/17 발굴 → 6/18 시가 진입 (clean PIT)",
+            f"진입 {PA['entry_date']} 시가 · {len(PA['tickers'])}종목 동일가중 · SL-30/vol3x/drop-7%/hold120 · PIT 재구성(non-live)",
+            "PIT-A")
+    PB = PF.get('config_h_pit_0618b')
+    if PB:
+        st.markdown("")
+        render_tracker_track(
+            PB, "B. 6/18 발굴 → 6/22 시가 진입 (conservative)",
+            f"진입 {PB['entry_date']} 시가 · {len(PB['tickers'])}종목 동일가중 · SL-30/vol3x/drop-7%/hold120 · PIT 재구성(non-live)",
+            "PIT-B")
+
 
 # ═══ Page: Satellite · Market-only (Without BERA AI) ═══
 elif page == "📡 Satellite · Market-only":

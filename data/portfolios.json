@@ -845,5 +845,57 @@
       "AVTX",
       "PALI"
     ]
+  },
+  "config_h_pit_0618a": {
+    "engine": "Config H PIT (재구성, non-live)",
+    "entry_date": "2026-06-18",
+    "sl": -0.3,
+    "vol_mult": 3.0,
+    "drop_th": -0.07,
+    "hold": 120,
+    "bench": {
+      "XBI": 141.86,
+      "SPY": 747.76,
+      "QQQ": 736.39
+    },
+    "note": "6/17 발굴(데이터<=6/17, SI 공표지연 가드) -> 6/18 시가 진입. 사후 PIT 재구성.",
+    "tickers": [
+      "IKT",
+      "BIOA",
+      "DSGN",
+      "APGE",
+      "SABS",
+      "IRON",
+      "AVTX",
+      "ORKA",
+      "OCUL",
+      "MGNX"
+    ]
+  },
+  "config_h_pit_0618b": {
+    "engine": "Config H PIT (재구성, non-live)",
+    "entry_date": "2026-06-22",
+    "sl": -0.3,
+    "vol_mult": 3.0,
+    "drop_th": -0.07,
+    "hold": 120,
+    "bench": {
+      "XBI": 143.53,
+      "SPY": 747.7,
+      "QQQ": 742.02
+    },
+    "note": "6/18 발굴 -> 6/22 시가 진입(보수적, APGE M&A 갭 이후). 사후 PIT 재구성.",
+    "tickers": [
+      "IKT",
+      "BIOA",
+      "DSGN",
+      "APGE",
+      "SABS",
+      "ALXO",
+      "MAZE",
+      "IRON",
+      "AVTX",
+      "ORKA"
+    ]
   }
 }

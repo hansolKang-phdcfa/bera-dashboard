@@ -358,6 +358,17 @@ def render_tracker_track(cfg, title, sub_caption, bench_label):
     show_bench(pr, cfg['entry_date'], cfg['bench'], bench_label, bera_daily_override=daily_series)
 
 
+def render_tracker_min(cfg, title, bench_label):
+    """롤링 코호트용 최소 트랙: 헤드라인 + XBI 누적곡선 + ticker/PnL% 한 줄."""
+    pr, trows, xbi_ret, n, daily_series = compute_shared_tracker(
+        tuple(cfg['tickers']), cfg['entry_date'], cfg['sl'], cfg['vol_mult'], cfg['drop_th'], cfg['hold'])
+    if pr is None:
+        return
+    st.markdown(f"**{title}** — {pr:+.1f}% vs XBI {xbi_ret:+.1f}% ({pr - xbi_ret:+.1f}%p)")
+    show_bench(pr, cfg['entry_date'], cfg['bench'], bench_label, bera_daily_override=daily_series)
+    st.caption(" · ".join(f"{r['Ticker']} {r['PnL%']:+.0f}%" for r in trows))
+
+
 # ═══ Sidebar ═══
 st.sidebar.title("BERA")
 st.sidebar.caption("Biotech Event-driven Research & Alpha")
@@ -645,6 +656,17 @@ elif page == "🎯 Satellite · QS+Market":
             CH, "🧬 Config H (7/14 재발굴)",
             f"진입 {CH['entry_date']} 시가 · {len(CH['tickers'])}종목 동일가중 · 스마트머니 스코어 + 임상 AI 게이트(prob≥0.5, 3yr P2/3) · SL-30/vol3x/drop-7%/hold120 · {CH['backtest_note']}",
             "Config H")
+
+    # ── 롤링 진입 강건성: 매주 발굴 코호트 (최소 포맷) ──
+    st.markdown("---")
+    RC = PF.get('config_h_rolling')
+    if RC:
+        st.markdown("### 🧪 롤링 진입 강건성 — 매주 발굴 코호트")
+        st.caption(RC['method'])
+        for co in RC['cohorts']:
+            render_tracker_min(
+                co, f"Config H ({co['disc']} 발굴 → {co['entry_date'][5:].replace('-', '/')} 진입)",
+                co['disc'])
 
 
 # ═══ Page: Satellite · Market-only (Without BERA AI) ═══

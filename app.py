@@ -731,7 +731,7 @@ elif page == "🏛️ Core (6/5, v3)":
 # ═══ Page: Core (7/17, v5) ═══
 elif page == "🚀 Core (7/17, v5)":
     st.title("Core (7/17, v5) -- 2026-07-17 신규 발굴 트랙")
-    st.caption("🔵 Core 계열 · Core v2 전략(순수 prob top20 + SI-drop) · 시총 $2B+ · 벤치 IBB/SPY/QQQ · 동일가중")
+    st.caption("🔵 Core 계열 · Core v2 전략(순수 prob top20 + SI-drop) · 시총 $2B+ · 벤치 IBB · 동일가중")
     st.markdown(CV2['entry_note'])
     st.markdown(CV2['backtest_note'])
     st.markdown("---")

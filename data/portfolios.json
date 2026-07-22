@@ -682,9 +682,7 @@
     "entry_date": "2026-07-17",
     "seed_usd": 50000,
     "bench": {
-      "IBB": 190.64,
-      "SPY": 744.33,
-      "QQQ": 693.74
+      "IBB": 190.64
     },
     "entry_note": "Entry: 2026-07-17 close | Seed: $50,000 | Core v2 strategy (pure-prob top20 + SI-drop filter, equal-weight) | source: public us DB as-of 2026-07-17",
     "backtest_note": "Backtest: CAGR 42.8%, Sharpe 1.23, MDD -32.5% (7.4yr)",
@@ -939,9 +937,7 @@
     "entry_date": "2026-06-30",
     "seed_usd": 50000,
     "bench": {
-      "IBB": 190.19,
-      "SPY": 746.77,
-      "QQQ": 736.4
+      "IBB": 190.19
     },
     "backtest_note": "Backtest: CAGR 42.8%, Sharpe 1.23, MDD -32.5% (7.4yr)",
     "note": "Core v2 전략(순수 prob top20 + SI-drop, 동일가중) point-in-time 발굴 as-of 2026-06-30. 월말 -15% SL(7/31 첫 체크).",

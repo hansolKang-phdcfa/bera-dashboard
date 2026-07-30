@@ -417,10 +417,14 @@ SAT_TRACKS = [
      'heading': '🛰️ Config H (6/22 발굴 · With BERA AI)', 'sub': _SL_SUB, 'bench_label': 'Config H 6/22'},
     {'key': 'strong_buy_tracker', 'label': '📡 Satellite (6/25)', 'ai': False, 'kind': 'tracker',
      'heading': '📡 6/25 Strong Buy 보드', 'sub': _MKT_SUB, 'bench_label': '6/25'},
+    {'key': 'config_h_0702', 'label': '🛰️ Satellite (7/2)', 'ai': True, 'kind': 'tracker',
+     'heading': '🛰️ Config H (7/2 발굴 · With BERA AI)', 'sub': _SL_SUB, 'bench_label': 'Config H 7/2'},
     {'key': 'config_h_0714', 'label': '🛰️ Satellite (7/14)', 'ai': True, 'kind': 'tracker',
      'heading': '🛰️ Config H (7/14 재발굴 · With BERA AI)', 'sub': _SL_SUB, 'bench_label': 'Config H'},
-    {'key': 'config_h_0729', 'label': '🛰️ Satellite (7/29, 신규)', 'ai': True, 'kind': 'tracker',
-     'heading': '🛰️ Config H (7/29 재발굴 · With BERA AI)', 'sub': _SL_SUB, 'bench_label': 'Config H 7/29'},
+    {'key': 'config_h_0721', 'label': '🛰️ Satellite (7/21)', 'ai': True, 'kind': 'tracker',
+     'heading': '🛰️ Config H (7/21 발굴 · With BERA AI)', 'sub': _SL_SUB, 'bench_label': 'Config H 7/21'},
+    {'key': 'config_h_0728', 'label': '🛰️ Satellite (7/28, 신규)', 'ai': True, 'kind': 'tracker',
+     'heading': '🛰️ Config H (7/28 재발굴 · With BERA AI)', 'sub': _SL_SUB, 'bench_label': 'Config H 7/28'},
 ]
 # Only keep tracks whose data is actually present in portfolios.json.
 SAT_TRACKS = [t for t in SAT_TRACKS if t['key'] in PF]
@@ -467,10 +471,18 @@ for label in OVERVIEW_PAGES:
     _nav_button(label)
 
 # Satellite 계열이 전략의 중심 → Core 계열보다 위에 배치.
+# With-AI(임상 게이트) / Market-only(임상 미적용)를 하위그룹으로 분리 — 둘은
+# 같은 Satellite지만 임상 AI 유무가 달라 섞어 놓으면 혼동됨. 각 그룹 내 날짜순.
 st.sidebar.markdown("**🟢 Satellite 계열**")
-st.sidebar.caption("소형주 포함 · 이벤트드리븐 · vs XBI · 날짜순 · 🛰️=With AI / 📡=Market-only")
-for label in SATELLITE_PAGES:
-    _nav_button(label)
+st.sidebar.caption("소형주 포함 · 이벤트드리븐 · vs XBI")
+st.sidebar.caption("🛰️ With BERA AI · 스마트머니 + 임상 성공확률 게이트")
+for t in SAT_TRACKS:
+    if t['ai']:
+        _nav_button(t['label'])
+st.sidebar.caption("📡 Market-only · 순수 스마트머니(임상 미적용)")
+for t in SAT_TRACKS:
+    if not t['ai']:
+        _nav_button(t['label'])
 
 st.sidebar.markdown("**🔵 Core 계열**")
 st.sidebar.caption("중대형주 · 시총 $2B+ · vs IBB")

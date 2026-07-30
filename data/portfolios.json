@@ -1065,18 +1065,43 @@
       }
     ]
   },
-  "config_h_0729": {
+  "config_h_0721": {
     "engine": "Config H (with BERA AI)",
-    "entry_date": "2026-07-29",
+    "entry_date": "2026-07-21",
     "sl": -0.3,
     "vol_mult": 3.0,
     "drop_th": -0.07,
     "hold": 120,
     "bench": {
-      "XBI": 149.23
+      "XBI": 151.02
     },
     "backtest_note": "Backtest: CAGR 83.8%, Sharpe 1.98 (Satellite Config H)",
-    "note": "스마트머니 스코어 + 임상 AI 게이트(prob>=0.5, 3yr P2/3). public us DB, AS_OF 2026-07-29(마지막 완결 세션, 진입=7/29 시가). 진입 전원 13G_quiet — fresh 13G(7/29까지) 기반, fresh SI/insider 없음.",
+    "note": "스마트머니 스코어 + 임상 AI 게이트(prob>=0.5, 3yr P2/3). public us DB, AS_OF 2026-07-21, 진입=07/21 시가. 전원 13G_quiet(fresh 13G 기반). 가드 재검증 후 top10 불변. ※ SI publication-lag 가드 적용(정산일+8영업일 ≤ AS_OF): 발표 전 공매도 데이터 미사용, as-of 데이터로만 발굴.",
+    "tickers": [
+      "JBIO",
+      "NKTR",
+      "CRMD",
+      "DSGN",
+      "CRVS",
+      "PTCT",
+      "ALXO",
+      "MAZE",
+      "KURA",
+      "ALDX"
+    ]
+  },
+  "config_h_0728": {
+    "engine": "Config H (with BERA AI)",
+    "entry_date": "2026-07-28",
+    "sl": -0.3,
+    "vol_mult": 3.0,
+    "drop_th": -0.07,
+    "hold": 120,
+    "bench": {
+      "XBI": 150.5
+    },
+    "backtest_note": "Backtest: CAGR 83.8%, Sharpe 1.98 (Satellite Config H)",
+    "note": "스마트머니 스코어 + 임상 AI 게이트(prob>=0.5, 3yr P2/3). public us DB, AS_OF 2026-07-28, 진입=07/28 시가. 전원 13G_quiet(fresh 13G 기반). 가드 재검증 후 top10 불변. ※ SI publication-lag 가드 적용(정산일+8영업일 ≤ AS_OF): 발표 전 공매도 데이터 미사용, as-of 데이터로만 발굴.",
     "tickers": [
       "JBIO",
       "NKTR",
@@ -1085,9 +1110,34 @@
       "PTCT",
       "ALXO",
       "MAZE",
-      "PEPG",
+      "KURA",
       "IRON",
       "PALI"
+    ]
+  },
+  "config_h_0702": {
+    "engine": "Config H (with BERA AI)",
+    "entry_date": "2026-07-02",
+    "sl": -0.3,
+    "vol_mult": 3.0,
+    "drop_th": -0.07,
+    "hold": 120,
+    "bench": {
+      "XBI": 157.51
+    },
+    "backtest_note": "Backtest: CAGR 83.8%, Sharpe 1.98 (Satellite Config H)",
+    "note": "스마트머니 스코어 + 임상 AI 게이트(prob>=0.5, 3yr P2/3). public us DB, AS_OF 2026-07-02, 진입=07/02 시가. 전원 13G_quiet(EDGAR 실시간 13G/13F 기반). ※ SI publication-lag 가드 적용(정산일+8영업일 ≤ AS_OF): 발표 전 공매도 데이터 미사용, as-of 데이터로만 발굴.",
+    "tickers": [
+      "CRMD",
+      "CRVS",
+      "PEPG",
+      "IRON",
+      "PALI",
+      "PRAX",
+      "ANRO",
+      "ALMS",
+      "CABA",
+      "KPTI"
     ]
   }
 }

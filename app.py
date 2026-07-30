@@ -358,6 +358,75 @@ def render_tracker_track(cfg, title, sub_caption, bench_label):
     show_bench(pr, cfg['entry_date'], cfg['bench'], bench_label, bera_daily_override=daily_series)
 
 
+def render_satellite_v2(SAT):
+    """Render the Satellite v2 (6/5) weighted static portfolio (weight_pct + prob + smart money)."""
+    st.markdown(SAT['entry_note'])
+    st.markdown(SAT['backtest_note'])
+    tickers = [p['ticker'] for p in SAT['portfolio']]
+    prices = get_prices_batch(tickers)
+    rows = []
+    for p in SAT['portfolio']:
+        cur = prices.get(p['ticker'], p['entry'])
+        if cur <= 0: cur = p['entry']
+        alloc = SAT['seed_usd'] * p['weight_pct'] / 100
+        qty = int(alloc / p['entry'])
+        cost = qty * p['entry']; val = qty * cur; pnl = val - cost
+        rows.append({'Ticker': p['ticker'], 'Weight': f"{p['weight_pct']}%",
+                      'Prob': p['prob'], 'Entry': p['entry'], 'Current': cur,
+                      'Value': val, 'PnL': pnl, 'PnL%': pnl/cost*100 if cost>0 else 0,
+                      'Smart Money': p['smart_money']})
+    df = pd.DataFrame(rows)
+    tc = df['Value'].sum(); tp = df['PnL'].sum()
+    tpp = tp / (tc - tp) * 100 if (tc - tp) > 0 else 0
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Active", f"{len(SAT['portfolio'])} / {SAT['max_slots']} slots")
+    c2.metric("Invested", f"${tc:,.0f}")
+    c3.metric("PnL", f"${tp:+,.0f}", delta=f"{tpp:+.2f}%")
+    c4.metric("Slots Available", f"{SAT['max_slots'] - len(SAT['portfolio'])}")
+    st.dataframe(df.style.format({
+        'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
+        'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'
+    }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
+                ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
+                subset=['PnL','PnL%']),
+        width='stretch', hide_index=True)
+    sat_tqe = tuple((p['ticker'], int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry']), p['entry']) for p in SAT['portfolio'])
+    show_bench(tpp, SAT['entry_date'], SAT['bench'], "Satellite v2", portfolio=sat_tqe)
+
+
+# ═══ Satellite-family discovery tracks ═══
+# Each discovery date is its own sidebar page (mirrors the Core date-page layout),
+# sorted by entry_date ASCENDING — same convention as the Core pages. The freshest
+# discovery sits at the bottom of the Satellite group, just above the Core group.
+#   🛰️ = With BERA AI  (Config H: 스마트머니 시그널 + 임상 성공확률 게이트)
+#   📡 = Without BERA AI (Market-only: 순수 스마트머니, 임상 미적용)
+#   🎯 = Satellite v2   (weight_pct 정적 포트폴리오)
+_SL_SUB = "진입 {entry} 시가 · {n}종목 동일가중 · SL-30/vol3x/drop-7%/hold120"
+_MKT_SUB = "진입 {entry} 시초가 · {n}종목 동일가중 · SL {sl}% + 재분배 · 순수 스마트머니(임상 미적용)"
+SAT_TRACKS = [
+    {'key': 'shared_tracker', 'label': '📡 Satellite (5/26)', 'ai': False, 'kind': 'tracker',
+     'heading': '📡 5/26 추천종목 (Scouter 15선)', 'sub': _MKT_SUB, 'bench_label': '5/26'},
+    {'key': 'config_h_pit_0527', 'label': '🛰️ Satellite (5/28)', 'ai': True, 'kind': 'tracker',
+     'heading': '🛰️ Config H (5/28 발굴 · With BERA AI)', 'sub': _SL_SUB, 'bench_label': 'Config H 5/28'},
+    {'key': 'satellite', 'label': '🎯 Satellite v2 (6/5)', 'ai': True, 'kind': 'weighted'},
+    {'key': 'config_h_pit_0610', 'label': '🛰️ Satellite (6/11)', 'ai': True, 'kind': 'tracker',
+     'heading': '🛰️ Config H (6/11 발굴 · With BERA AI)', 'sub': _SL_SUB, 'bench_label': 'Config H 6/11'},
+    {'key': 'config_h_pit_0618a', 'label': '🛰️ Satellite (6/18)', 'ai': True, 'kind': 'tracker',
+     'heading': '🛰️ Config H (6/18 발굴 · With BERA AI)', 'sub': _SL_SUB, 'bench_label': 'Config H 6/18'},
+    {'key': 'config_h_pit_0618b', 'label': '🛰️ Satellite (6/22)', 'ai': True, 'kind': 'tracker',
+     'heading': '🛰️ Config H (6/22 발굴 · With BERA AI)', 'sub': _SL_SUB, 'bench_label': 'Config H 6/22'},
+    {'key': 'strong_buy_tracker', 'label': '📡 Satellite (6/25)', 'ai': False, 'kind': 'tracker',
+     'heading': '📡 6/25 Strong Buy 보드', 'sub': _MKT_SUB, 'bench_label': '6/25'},
+    {'key': 'config_h_0714', 'label': '🛰️ Satellite (7/14)', 'ai': True, 'kind': 'tracker',
+     'heading': '🛰️ Config H (7/14 재발굴 · With BERA AI)', 'sub': _SL_SUB, 'bench_label': 'Config H'},
+    {'key': 'config_h_0729', 'label': '🛰️ Satellite (7/29, 신규)', 'ai': True, 'kind': 'tracker',
+     'heading': '🛰️ Config H (7/29 재발굴 · With BERA AI)', 'sub': _SL_SUB, 'bench_label': 'Config H 7/29'},
+]
+# Only keep tracks whose data is actually present in portfolios.json.
+SAT_TRACKS = [t for t in SAT_TRACKS if t['key'] in PF]
+SAT_PAGE_MAP = {t['label']: t for t in SAT_TRACKS}
+
+
 # ═══ Sidebar ═══
 st.sidebar.title("BERA")
 st.sidebar.caption("Biotech Event-driven Research & Alpha")
@@ -376,10 +445,7 @@ CORE_PAGES = [
     "🗓️ Core (6/30, v4)",
     "🚀 Core (7/17, v5)",
 ]
-SATELLITE_PAGES = [
-    "🎯 Satellite · QS+Market",
-    "📡 Satellite · Market-only",
-]
+SATELLITE_PAGES = [t['label'] for t in SAT_TRACKS]  # date-per-page, ascending
 INSTITUTIONAL_PAGES = [TERMINAL_PAGE]  # Satellite 계열 · URL 게이트
 
 if 'page' not in st.session_state:
@@ -400,14 +466,15 @@ st.sidebar.markdown("**Overview**")
 for label in OVERVIEW_PAGES:
     _nav_button(label)
 
+# Satellite 계열이 전략의 중심 → Core 계열보다 위에 배치.
+st.sidebar.markdown("**🟢 Satellite 계열**")
+st.sidebar.caption("소형주 포함 · 이벤트드리븐 · vs XBI · 날짜순 · 🛰️=With AI / 📡=Market-only")
+for label in SATELLITE_PAGES:
+    _nav_button(label)
+
 st.sidebar.markdown("**🔵 Core 계열**")
 st.sidebar.caption("중대형주 · 시총 $2B+ · vs IBB")
 for label in CORE_PAGES:
-    _nav_button(label)
-
-st.sidebar.markdown("**🟢 Satellite 계열**")
-st.sidebar.caption("소형주 포함 · 이벤트드리븐 · vs XBI")
-for label in SATELLITE_PAGES:
     _nav_button(label)
 
 # Signal Terminal is a Satellite-family institutional page, hidden unless the URL
@@ -421,12 +488,18 @@ elif st.session_state.page in INSTITUTIONAL_PAGES:
     # Stale session landed on the terminal without the unlock param — bounce out.
     st.session_state.page = "🧬 Quality Score"
 
+# Stale session on a page that no longer exists (e.g. the old grouped Satellite
+# labels before the date-per-page split) → bounce to the default landing page.
+_ALL_PAGES = set(OVERVIEW_PAGES + CORE_PAGES + SATELLITE_PAGES + INSTITUTIONAL_PAGES)
+if st.session_state.page not in _ALL_PAGES:
+    st.session_state.page = "🧬 Quality Score"
+
 page = st.session_state.page
 
 st.sidebar.markdown("---")
 if st.sidebar.button("Refresh"):
     st.cache_data.clear()
-st.sidebar.caption("Updated: 2026-06-15")
+st.sidebar.caption("Updated: 2026-07-30")
 
 
 # ═══ Page: Core Live ═══
@@ -579,105 +652,24 @@ elif page == "🅰️ Core (5/28, v2)":
                portfolio=a_tqe, sl_events=cab_sl_ev)
 
 
-# ═══ Page: Satellite · QS+Market (With BERA AI) ═══
-elif page == "🎯 Satellite · QS+Market":
-    st.title("Satellite · QS + Market  (With BERA AI)")
-    st.caption("🟢 소형주 이벤트드리븐 · 벤치 XBI · 스마트머니 시그널 위에 임상 AI 게이트를 얹은 트랙")
+# ═══ Page: Satellite discovery (date-per-page, dispatched from SAT_TRACKS) ═══
+elif page in SAT_PAGE_MAP:
+    t = SAT_PAGE_MAP[page]
+    cfg = PF[t['key']]
+    ai_line = ("스마트머니 시그널 + 임상 AI 게이트(prob≥0.5, 3yr P2/3)" if t['ai']
+               else "순수 스마트머니(Scouter), 임상 게이트 없음")
+    st.title(f"{t['label']}")
+    st.caption(f"🟢 Satellite 계열 · 소형주 이벤트드리븐 · 벤치 XBI · {ai_line}")
     st.markdown("---")
 
-    # ── Satellite v2 (6/5) ──
-    st.markdown("### 🧬 Satellite v2 (6/5)")
-    st.markdown(SAT['entry_note'])
-    st.markdown(SAT['backtest_note'])
-    tickers = [p['ticker'] for p in SAT['portfolio']]
-    prices = get_prices_batch(tickers)
-    rows = []
-    for p in SAT['portfolio']:
-        cur = prices.get(p['ticker'], p['entry'])
-        if cur <= 0: cur = p['entry']
-        alloc = SAT['seed_usd'] * p['weight_pct'] / 100
-        qty = int(alloc / p['entry'])
-        cost = qty * p['entry']; val = qty * cur; pnl = val - cost
-        rows.append({'Ticker': p['ticker'], 'Weight': f"{p['weight_pct']}%",
-                      'Prob': p['prob'], 'Entry': p['entry'], 'Current': cur,
-                      'Value': val, 'PnL': pnl, 'PnL%': pnl/cost*100 if cost>0 else 0,
-                      'Smart Money': p['smart_money']})
-    df = pd.DataFrame(rows)
-    tc = df['Value'].sum(); tp = df['PnL'].sum()
-    tpp = tp / (tc - tp) * 100 if (tc - tp) > 0 else 0
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Active", f"{len(SAT['portfolio'])} / {SAT['max_slots']} slots")
-    c2.metric("Invested", f"${tc:,.0f}")
-    c3.metric("PnL", f"${tp:+,.0f}", delta=f"{tpp:+.2f}%")
-    c4.metric("Slots Available", f"{SAT['max_slots'] - len(SAT['portfolio'])}")
-    st.dataframe(df.style.format({
-        'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
-        'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'
-    }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
-                ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
-                subset=['PnL','PnL%']),
-        width='stretch', hide_index=True)
-    sat_tqe = tuple((p['ticker'], int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry']), p['entry']) for p in SAT['portfolio'])
-    show_bench(tpp, SAT['entry_date'], SAT['bench'], "Satellite v2", portfolio=sat_tqe)
-
-    # ── Config H (6/18) ──
-    st.markdown("---")
-    PA = PF.get('config_h_pit_0618a')
-    if PA:
-        render_tracker_track(
-            PA, "🧬 Config H (6/18)",
-            f"진입 {PA['entry_date']} 시가 · {len(PA['tickers'])}종목 동일가중 · SL-30/vol3x/drop-7%/hold120",
-            "Config H 6/18")
-
-    # ── Config H (6/22) ──
-    st.markdown("---")
-    PB = PF.get('config_h_pit_0618b')
-    if PB:
-        render_tracker_track(
-            PB, "🧬 Config H (6/22)",
-            f"진입 {PB['entry_date']} 시가 · {len(PB['tickers'])}종목 동일가중 · SL-30/vol3x/drop-7%/hold120",
-            "Config H 6/22")
-
-    # ── Config H (7/14) ──
-    st.markdown("---")
-    CH = PF.get('config_h_0714')
-    if CH:
-        render_tracker_track(
-            CH, "🧬 Config H (7/14 재발굴)",
-            f"진입 {CH['entry_date']} 시가 · {len(CH['tickers'])}종목 동일가중 · 스마트머니 스코어 + 임상 AI 게이트(prob≥0.5, 3yr P2/3) · SL-30/vol3x/drop-7%/hold120 · {CH['backtest_note']}",
-            "Config H")
-
-    # ── 롤링 검증 코호트 (다른 진입 시점, PIT) ──
-    st.markdown("---")
-    st.markdown("### 🧪 롤링 검증 — 다른 진입 시점 (PIT)")
-    st.caption("진입 시점을 바꿔 발굴한 코호트(그 시점 데이터만). 현재 XBI 초과 유지 확인용.")
-    for _key, _disc in [('config_h_pit_0527', '5/27'), ('config_h_pit_0610', '6/10')]:
-        _cfg = PF.get(_key)
-        if _cfg:
-            render_tracker_track(
-                _cfg, f"🧬 Config H ({_disc} 발굴)",
-                f"진입 {_cfg['entry_date']} 시가 · {len(_cfg['tickers'])}종목 동일가중 · SL-30/vol3x/drop-7%/hold120",
-                f"Config H {_disc}")
-
-
-# ═══ Page: Satellite · Market-only (Without BERA AI) ═══
-elif page == "📡 Satellite · Market-only":
-    st.title("Satellite · Market-only  (Without BERA AI)")
-    st.caption("🟢 소형주 이벤트드리븐 · 벤치 XBI · 순수 스마트머니(Scouter Strong Buy), 임상 게이트 없음")
-    st.markdown("---")
-    ST = PF.get('shared_tracker')
-    if ST:
-        render_tracker_track(
-            ST, "📡 5/26 추천종목 (Scouter 15선)",
-            f"진입 {ST['entry_date']} 시초가 · {len(ST['tickers'])}종목 동일가중 · SL {int(ST['sl']*100)}% + 재분배 · 순수 스마트머니(임상 미적용)",
-            "5/26")
-        st.markdown("---")
-    SB = PF.get('strong_buy_tracker')
-    if SB:
-        render_tracker_track(
-            SB, "📡 6/25 Strong Buy 보드",
-            f"진입 {SB['entry_date']} 시초가 · {len(SB['tickers'])}종목 동일가중 · SL {int(SB['sl']*100)}% + 재분배 · 순수 스마트머니(임상 미적용)",
-            "6/25")
+    if t['kind'] == 'weighted':
+        render_satellite_v2(cfg)
+    else:
+        sub = t['sub'].format(entry=cfg['entry_date'], n=len(cfg['tickers']),
+                              sl=int(cfg.get('sl', 0) * 100))
+        if t.get('bench_label') == 'Config H' and cfg.get('backtest_note'):
+            sub = f"{sub} · {cfg['backtest_note']}"
+        render_tracker_track(cfg, t['heading'], sub, t['bench_label'])
 
 
 # ═══ Page: Core New ═══

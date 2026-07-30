@@ -440,9 +440,8 @@ TERMINAL_PAGE = "🛰️ Signal Terminal"
 # Nav grouped by STRATEGY FAMILY so the two lanes are obvious at a glance:
 #   🔵 Core 계열     = 중대형주(시총 $2B+) 위주, 벤치마크 IBB
 #   🟢 Satellite 계열 = 소형주 포함 이벤트드리븐, 벤치마크 XBI (Signal Terminal 포함)
-OVERVIEW_PAGES = ["📊 Summary", "📈 종목별 상세"]
+OVERVIEW_PAGES = ["📊 Summary", "🧬 Quality Score", "📈 종목별 상세"]
 CORE_PAGES = [
-    "🧬 Quality Score",
     "💰 Core (5/18, v1)",
     "🅰️ Core (5/28, v2)",
     "🏛️ Core (6/5, v3)",
@@ -906,89 +905,107 @@ elif page == "📊 Summary":
     st.markdown("All BERA portfolios at a glance.")
     st.markdown("---")
 
-    summaries = []
+    st.caption("라이브 페이퍼 트래킹 요약 · Return% = 진입일 이후 실현 수익률 · 벤치 대비. Satellite 계열이 전략 중심.")
 
-    # Core Live
-    tickers = [p['ticker'] for p in LIVE['portfolio']]
-    px_live = get_prices_batch(tickers)
-    tc = 0; tv = 0
-    for p in LIVE['portfolio']:
-        cur = px_live.get(p['ticker'], p['entry'])
-        if cur <= 0: cur = p['entry']
-        tc += p['qty'] * p['entry']; tv += p['qty'] * cur
-    pnl = tv - tc - LIVE['sl_loss']
-    summaries.append({'Portfolio': 'Core (5/18, v1)', 'Family': '🔵 Core', 'Entry': LIVE['entry_date'],
-                       'Seed': f"${LIVE['seed_usd']:,}", 'Stocks': len(LIVE['portfolio']),
-                       'Value': tv, 'PnL': pnl, 'PnL%': pnl/LIVE['orig_cost']*100 if LIVE['orig_cost']>0 else 0,
-                       'Days': (pd.Timestamp.now()-pd.Timestamp(LIVE['entry_date'])).days})
+    def _bench_ret(entry_date, bench_dict):
+        try:
+            bd = get_bench_data(entry_date, bench_dict)
+            sym = list(bench_dict.keys())[0]
+            return (sym, bd[sym]['ret']) if sym in bd else (list(bench_dict.keys())[0], None)
+        except Exception:
+            return (list(bench_dict.keys())[0] if bench_dict else '—', None)
 
-    # Core A (core + defense)
-    all_ab = list(set([s['ticker'] for s in CAB['core_a']] + [s['ticker'] for s in CAB['defense']]))
-    px_ab = get_prices_batch(all_ab)
-    tc = 0; tv = 0
-    for s in CAB['core_a'] + CAB['defense']:
-        tk, qty, ep = s['ticker'], s['qty'], s['entry']
-        cur = px_ab.get(tk, ep)
-        if cur <= 0: cur = ep
-        tc += qty * ep; tv += qty * cur
-    pnl = tv - tc - CAB['sl_loss']
-    summaries.append({'Portfolio': 'Core A (Paper)', 'Family': '🔵 Core', 'Entry': CAB['entry_date'],
-                       'Seed': f"${CAB['seed_usd']:,}", 'Stocks': len(CAB['core_a'])+len(CAB['defense']),
-                       'Value': tv, 'PnL': pnl, 'PnL%': pnl/CAB['orig_cost']*100 if CAB['orig_cost']>0 else 0,
-                       'Days': (pd.Timestamp.now()-pd.Timestamp(CAB['entry_date'])).days})
+    rows_s = []
 
-    # Satellite v2
-    tickers = [p['ticker'] for p in SAT['portfolio']]
-    px_sat = get_prices_batch(tickers)
-    tc = 0; tv = 0
-    for p in SAT['portfolio']:
-        cur = px_sat.get(p['ticker'], p['entry'])
-        if cur <= 0: cur = p['entry']
-        q = int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry'])
-        tc += q * p['entry']; tv += q * cur
-    summaries.append({'Portfolio': 'Satellite v2 (Paper)', 'Family': '🟢 Satellite', 'Entry': SAT['entry_date'],
-                       'Seed': f"${SAT['seed_usd']:,}", 'Stocks': len(SAT['portfolio']),
-                       'Value': tv, 'PnL': tv-tc, 'PnL%': (tv-tc)/tc*100 if tc>0 else 0,
-                       'Days': (pd.Timestamp.now()-pd.Timestamp(SAT['entry_date'])).days})
+    # ── 🟢 Satellite 계열 (중심) — 날짜순, tracker/weighted 자동 ──
+    for t in SAT_TRACKS:
+        cfg = PF[t['key']]
+        try:
+            if t['kind'] == 'weighted':
+                tks = [p['ticker'] for p in cfg['portfolio']]
+                pr = get_prices_batch(tks)
+                tc = tv = 0
+                for p in cfg['portfolio']:
+                    cur = pr.get(p['ticker'], p['entry']) or p['entry']
+                    if cur <= 0: cur = p['entry']
+                    q = int(cfg['seed_usd'] * p['weight_pct'] / 100 / p['entry'])
+                    tc += q * p['entry']; tv += q * cur
+                ret = (tv / tc - 1) * 100 if tc > 0 else None
+                n = len(cfg['portfolio'])
+                bsym, bret = _bench_ret(cfg['entry_date'], cfg['bench'])
+            else:
+                ret, _tr, bret, n, _d = compute_shared_tracker(
+                    tuple(cfg['tickers']), cfg['entry_date'], cfg['sl'],
+                    cfg['vol_mult'], cfg['drop_th'], cfg['hold'])
+                bsym = 'XBI'
+            rows_s.append({'Family': '🟢 Sat', 'Portfolio': t['label'].split(' ', 1)[-1],
+                'Entry': cfg['entry_date'], 'N': n, 'Return%': ret, 'Bench': bsym,
+                'Bench%': bret, 'vs Bench': (ret - bret) if (ret is not None and bret is not None) else None})
+        except Exception:
+            pass
 
-    # Core v2
-    tickers = [p['ticker'] for p in CNEW['portfolio']]
-    px_cnew = get_prices_batch(tickers)
-    tm = sum(p['weight_mult'] for p in CNEW['portfolio'])
-    tc = 0; tv = 0
-    for p in CNEW['portfolio']:
-        cur = px_cnew.get(p['ticker'], p['entry'])
-        if cur <= 0: cur = p['entry']
-        q = max(1, int(CNEW['seed_usd'] * p['weight_mult'] / tm / p['entry']))
-        tc += q * p['entry']; tv += q * cur
-    summaries.append({'Portfolio': 'Core (6/5, v3)', 'Family': '🔵 Core', 'Entry': CNEW['entry_date'],
-                       'Seed': f"${CNEW['seed_usd']:,}", 'Stocks': len(CNEW['portfolio']),
-                       'Value': tv, 'PnL': tv-tc, 'PnL%': (tv-tc)/tc*100 if tc>0 else 0,
-                       'Days': (pd.Timestamp.now()-pd.Timestamp(CNEW['entry_date'])).days})
+    # ── 🔵 Core 계열 ──
+    def _core_bh(cfg, label, weight_key='weight_mult'):
+        tks = [p['ticker'] for p in cfg['portfolio']]
+        pr = get_prices_batch(tks)
+        tm = sum(p.get(weight_key, 1) for p in cfg['portfolio'])
+        tc = tv = 0
+        for p in cfg['portfolio']:
+            cur = pr.get(p['ticker'], p['entry']) or p['entry']
+            if cur <= 0: cur = p['entry']
+            q = max(1, int(cfg['seed_usd'] * p.get(weight_key, 1) / tm / p['entry']))
+            tc += q * p['entry']; tv += q * cur
+        ret = (tv / tc - 1) * 100 if tc > 0 else None
+        bsym, bret = _bench_ret(cfg['entry_date'], cfg['bench'])
+        return {'Family': '🔵 Core', 'Portfolio': label, 'Entry': cfg['entry_date'],
+                'N': len(cfg['portfolio']), 'Return%': ret, 'Bench': bsym, 'Bench%': bret,
+                'vs Bench': (ret - bret) if (ret is not None and bret is not None) else None}
 
-    sdf = pd.DataFrame(summaries)
+    try:
+        # Core Live (5/18) — qty 기반, SL 반영
+        pxl = get_prices_batch([p['ticker'] for p in LIVE['portfolio']])
+        tc = tv = 0
+        for p in LIVE['portfolio']:
+            cur = pxl.get(p['ticker'], p['entry']) or p['entry']
+            if cur <= 0: cur = p['entry']
+            tc += p['qty'] * p['entry']; tv += p['qty'] * cur
+        lret = (tv - tc - LIVE['sl_loss']) / LIVE['orig_cost'] * 100 if LIVE['orig_cost'] > 0 else None
+        lb, lbr = _bench_ret(LIVE['entry_date'], LIVE['bench'])
+        rows_s.append({'Family': '🔵 Core', 'Portfolio': 'Core (5/18, v1) Live', 'Entry': LIVE['entry_date'],
+            'N': len(LIVE['portfolio']), 'Return%': lret, 'Bench': lb, 'Bench%': lbr,
+            'vs Bench': (lret - lbr) if (lret is not None and lbr is not None) else None})
+    except Exception:
+        pass
+    for _k, _lbl in [('core_new', 'Core (6/5, v3)'), ('core_v2_pit_0630', 'Core (6/30, v4)'),
+                     ('core_v2_0717', 'Core (7/17, v5)')]:
+        _cfg = PF.get(_k)
+        if _cfg:
+            try:
+                rows_s.append(_core_bh(_cfg, _lbl))
+            except Exception:
+                pass
+
+    sdf = pd.DataFrame(rows_s)
     st.dataframe(sdf.style.format({
-        'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.2f}%',
-    }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
-                ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
-                subset=['PnL','PnL%']),
+        'Return%': '{:+.1f}%', 'Bench%': '{:+.1f}%', 'vs Bench': '{:+.1f}%p'
+    }, na_rep='—').map(lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
+                ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''),
+                subset=['Return%', 'vs Bench']),
         width='stretch', hide_index=True)
-
-    # Total
-    total_val = sdf['Value'].sum()
-    total_pnl = sdf['PnL'].sum()
-    st.markdown(f"**Combined Value: ${total_val:,.0f} | Combined PnL: ${total_pnl:+,.0f}**")
+    st.caption("Satellite tracker = SL−30/vol/hold 규율 반영 실현 수익 · Core = buy&hold. 벤치: Satellite XBI / Core IBB.")
 
     st.markdown("---")
     st.markdown("""
 ### About BERA
 BERA (Biotech Event-driven Research & Alpha) is a quantitative biotech investment research system.
 
-**Core Strategy**: AI-based clinical trial success prediction + fundamental filters for large-cap biotech ($2B+).
+**Satellite Strategy** (전략 중심): Smart-money signal tracking (13G/13F · insider · short-interest)
++ clinical AI confirmation gate for small/mid-cap event-driven biotech. Point-in-time backtest
+**CAGR 86.0% / Sharpe 2.16** (2023-04~2026-07) — see Quality Score page.
 
-**Satellite Strategy**: Smart money signal tracking + clinical AI risk filter for small/mid-cap event-driven biotech.
+**Core Strategy**: AI clinical trial success prediction + fundamental filters for large-cap ($2B+).
 
-Paper tracking started June 2026. Results updated in real-time via yfinance.
+Paper tracking started 2026. Live results via yfinance.
 """)
     st.caption("BERA | hansol.kang@bera.ai")
 
@@ -996,7 +1013,7 @@ Paper tracking started June 2026. Results updated in real-time via yfinance.
 # ═══ Page: Quality Score ═══
 elif page == "🧬 Quality Score":
     st.title("Quality Score — Clinical AI Pipeline Scoring")
-    st.caption("🔵 Core 계열 전략 · 중대형주(시총 $2B+) · 벤치마크 IBB")
+    st.caption("🧬 임상 성공확률 스코어 · 전 계열 공통 신호 · 투자 검증은 Satellite 이벤트드리븐(Point-in-Time, 벤치 XBI)")
     st.markdown("""
 BERA's proprietary AI model predicts clinical trial success probability for every active trial
 across 814 US-listed biotech companies. The **Quality Score** is the average predicted success
@@ -1008,57 +1025,82 @@ market has not yet priced in the systematic success/failure probabilities embedd
 This information asymmetry — new information in the EMH sense — is what BERA exploits.
 """)
 
-    # ── Backtest Performance ──
+    # ── Backtest Performance: clinical gate in the Satellite strategy (point-in-time) ──
     st.markdown("---")
-    st.markdown("### Backtest: Quality Score as Investment Signal")
+    st.markdown("### Backtest: Clinical AI Gate in the Satellite Strategy (Point-in-Time)")
     st.markdown("""
-Strategy: Buy the top 20 stocks ranked by Quality Score (mean predicted success probability),
-market cap $2B+, equal-weighted, quarterly rebalancing. Period: Jan 2019 — May 2026 (7.4 years).
+The clinical Quality Score is used as a **confirmation gate** on top of smart-money signals
+(institutional 13G/13F · insider buying · short-interest) in BERA's small/mid-cap event-driven
+**Satellite** strategy. Below is the **point-in-time** backtest — every position uses only data
+that was public on the trade date: survivorship-free, with SEC/FINRA publication-lag corrected.
+Period 2023-04 — 2026-07 (3.3 yrs) · equal-weight top-10 · buy & hold · \$100M float floor · vs XBI.
 """)
+
+    @st.cache_data(ttl=3600)
+    def _load_sat_curve():
+        try:
+            return pd.read_csv(os.path.join(DATA_DIR, 'satellite_pit_curve.csv'), parse_dates=['date'])
+        except Exception:
+            return None
+    curve = _load_sat_curve()
 
     bt_c1, bt_c2, bt_c3, bt_c4 = st.columns(4)
-    bt_c1.metric("CAGR", "42.8%")
-    bt_c2.metric("Sharpe Ratio", "1.23")
-    bt_c3.metric("Max Drawdown", "-32.5%")
-    bt_c4.metric("All Years Positive", "Yes")
+    bt_c1.metric("CAGR", "86.0%")
+    bt_c2.metric("Sharpe Ratio", "2.16")
+    bt_c3.metric("Max Drawdown", "-44.9%")
+    bt_c4.metric("누적 (3.3y) vs XBI", "+685%", delta="vs XBI +93%")
 
-    annual_data = pd.DataFrame({
-        'Year': ['2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026*'],
-        'Quality Score Strategy': [40, 81, 14, 39, 52, 13, 88, 8],
-        'IBB': [24.0, 26.7, 1.6, -13.5, 4.8, -4.0, 27.3, 0.6],
-        'SPY': [31.1, 17.2, 30.5, -18.6, 26.7, 25.6, 18.0, 8.3],
-    })
-
-    fig_annual = go.Figure()
-    fig_annual.add_trace(go.Bar(
-        x=annual_data['Year'], y=annual_data['Quality Score Strategy'],
-        name='Quality Score Strategy', marker_color='#1976D2',
-    ))
-    fig_annual.add_trace(go.Scatter(
-        x=annual_data['Year'], y=annual_data['IBB'],
-        name='IBB (Biotech ETF)', mode='lines+markers',
-        line=dict(color='#FB8C00', width=2),
-    ))
-    fig_annual.add_trace(go.Scatter(
-        x=annual_data['Year'], y=annual_data['SPY'],
-        name='SPY (S&P 500)', mode='lines+markers',
-        line=dict(color='#43A047', width=2),
-    ))
-    fig_annual.update_layout(
-        title='Annual Returns: Quality Score Strategy vs Benchmarks (%)',
-        yaxis_title='Return (%)',
-        barmode='group', height=420,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02),
+    st.info(
+        "★ **임상 게이트의 기여**: 같은 스마트머니 시그널에서 임상 게이트가 없으면 CAGR 44.5% (Sharpe 1.11), "
+        "임상 Quality Score를 얹으면 **86.0% (Sharpe 2.16)** — 동일 PIT 조건에서 +41.5%p. "
+        "임상 필터가 스마트머니 위에 곱셈으로 작동하는 것이 핵심."
     )
-    fig_annual.add_hline(y=0, line_dash="dot", line_color="gray")
-    st.plotly_chart(fig_annual, use_container_width=True)
 
-    st.markdown("""
-Key observations:
-- Positive returns in every year including 2022 (+39%) when IBB fell -13.5% and SPY fell -19%
-- Outperformed IBB in all 8 years — the Quality Score consistently identifies pipeline strength
-- 2026 YTD as of May (*partial year)
-""")
+    if curve is not None:
+        # (1) Cumulative return line chart vs XBI
+        fig_cum = go.Figure()
+        fig_cum.add_trace(go.Scatter(x=curve['date'], y=curve['bera_cumret'],
+            name='BERA Satellite (PIT)', line=dict(color='#1976D2', width=2.5)))
+        fig_cum.add_trace(go.Scatter(x=curve['date'], y=curve['xbi_cumret'],
+            name='XBI (Biotech ETF)', line=dict(color='#E53935', width=2)))
+        fig_cum.update_layout(
+            title='Cumulative Return: BERA Satellite (PIT) vs XBI (%)',
+            yaxis_title='Cumulative Return (%)', height=430, hovermode='x unified',
+            legend=dict(orientation="h", yanchor="bottom", y=1.02), margin=dict(t=40))
+        fig_cum.add_hline(y=0, line_dash="dot", line_color="gray")
+        st.plotly_chart(fig_cum, use_container_width=True)
+
+        # (2) Annual returns bar chart (BERA vs XBI), derived from the curve
+        _c = curve.copy()
+        _c['year'] = _c['date'].dt.year
+        _c['b_eq'] = 1 + _c['bera_cumret'] / 100
+        _c['x_eq'] = 1 + _c['xbi_cumret'] / 100
+        rows_a = []
+        pb = px_ = 1.0
+        for yr in sorted(_c['year'].unique()):
+            g = _c[_c['year'] == yr]
+            be, xe = g['b_eq'].iloc[-1], g['x_eq'].iloc[-1]
+            rows_a.append({'Year': ('%d*' % yr if yr == _c['year'].max() else str(yr)),
+                           'BERA Satellite': (be / pb - 1) * 100, 'XBI': (xe / px_ - 1) * 100})
+            pb, px_ = be, xe
+        adf = pd.DataFrame(rows_a)
+        fig_ann = go.Figure()
+        fig_ann.add_trace(go.Bar(x=adf['Year'], y=adf['BERA Satellite'],
+            name='BERA Satellite (PIT)', marker_color='#1976D2'))
+        fig_ann.add_trace(go.Bar(x=adf['Year'], y=adf['XBI'], name='XBI', marker_color='#E53935'))
+        fig_ann.update_layout(
+            title='Annual Returns: BERA Satellite (PIT) vs XBI (%)',
+            yaxis_title='Return (%)', barmode='group', height=380,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02), margin=dict(t=40))
+        fig_ann.add_hline(y=0, line_dash="dot", line_color="gray")
+        st.plotly_chart(fig_ann, use_container_width=True)
+        st.caption(
+            "2026* = YTD(부분연도, ~7월). PIT(Point-in-Time) = 발굴 시점에 공개돼 있던 데이터만 사용 "
+            "— 현재 시총 소급(생존편향)·미공개 공시(look-ahead) 제거. 소형주 유니버스라 MDD −45%는 크지만 "
+            "매년 XBI 상회. (3.3년·1사이클·small-N caveat)"
+        )
+    else:
+        st.info("백테스트 곡선 데이터를 불러오지 못했습니다.")
 
     st.markdown("---")
 

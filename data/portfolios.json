@@ -821,7 +821,7 @@
     "bench": {
       "XBI": 155.45
     },
-    "backtest_note": "Backtest: CAGR 83.8%, Sharpe 1.98 (Satellite Config H)",
+    "backtest_note": "Backtest: CAGR 86.0%, Sharpe 2.16 (Satellite Config H · PIT·buy&hold·SI발표래그가드·sc55, 2023-04~26-07)",
     "note": "스마트머니 스코어 + 임상 AI 게이트(prob>=0.5, 3yr P2/3). public us DB, AS_OF 2026-07-14(7/15 13G 제외, look-ahead 회피).",
     "tickers": [
       "JBIO",
@@ -1075,8 +1075,8 @@
     "bench": {
       "XBI": 151.02
     },
-    "backtest_note": "Backtest: CAGR 83.8%, Sharpe 1.98 (Satellite Config H)",
-    "note": "스마트머니 스코어 + 임상 AI 게이트(prob>=0.5, 3yr P2/3). public us DB, AS_OF 2026-07-21, 진입=07/21 시가. 전원 13G_quiet(fresh 13G 기반). 가드 재검증 후 top10 불변. ※ SI publication-lag 가드 적용(정산일+8영업일 ≤ AS_OF): 발표 전 공매도 데이터 미사용, as-of 데이터로만 발굴.",
+    "backtest_note": "Backtest: CAGR 86.0%, Sharpe 2.16 (Satellite Config H · PIT·buy&hold·SI발표래그가드·sc55, 2023-04~26-07)",
+    "note": "스마트머니 스코어 + 임상 AI 게이트(prob>=0.5, 3yr P2/3). public us DB, AS_OF 2026-07-21, 진입=07/21 시가. 전원 13G/13F_quiet(fresh 13G 기반). sc55/sc65 top10 동일. ※ SI publication-lag 가드 + score컷 55(검증 헤드라인 config에 정렬, 76.8% 백테스트 config). 발표 전 SI 미사용.",
     "tickers": [
       "JBIO",
       "NKTR",
@@ -1100,8 +1100,8 @@
     "bench": {
       "XBI": 150.5
     },
-    "backtest_note": "Backtest: CAGR 83.8%, Sharpe 1.98 (Satellite Config H)",
-    "note": "스마트머니 스코어 + 임상 AI 게이트(prob>=0.5, 3yr P2/3). public us DB, AS_OF 2026-07-28, 진입=07/28 시가. 전원 13G_quiet(fresh 13G 기반). 가드 재검증 후 top10 불변. ※ SI publication-lag 가드 적용(정산일+8영업일 ≤ AS_OF): 발표 전 공매도 데이터 미사용, as-of 데이터로만 발굴.",
+    "backtest_note": "Backtest: CAGR 86.0%, Sharpe 2.16 (Satellite Config H · PIT·buy&hold·SI발표래그가드·sc55, 2023-04~26-07)",
+    "note": "스마트머니 스코어 + 임상 AI 게이트(prob>=0.5, 3yr P2/3). public us DB, AS_OF 2026-07-28, 진입=07/28 시가. 전원 13G/13F_quiet(fresh 13G 기반). sc55/sc65 top10 동일. ※ SI publication-lag 가드 + score컷 55(검증 헤드라인 config에 정렬, 76.8% 백테스트 config). 발표 전 SI 미사용.",
     "tickers": [
       "JBIO",
       "NKTR",
@@ -1125,19 +1125,19 @@
     "bench": {
       "XBI": 157.51
     },
-    "backtest_note": "Backtest: CAGR 83.8%, Sharpe 1.98 (Satellite Config H)",
-    "note": "스마트머니 스코어 + 임상 AI 게이트(prob>=0.5, 3yr P2/3). public us DB, AS_OF 2026-07-02, 진입=07/02 시가. 전원 13G_quiet(EDGAR 실시간 13G/13F 기반). ※ SI publication-lag 가드 적용(정산일+8영업일 ≤ AS_OF): 발표 전 공매도 데이터 미사용, as-of 데이터로만 발굴.",
+    "backtest_note": "Backtest: CAGR 86.0%, Sharpe 2.16 (Satellite Config H · PIT·buy&hold·SI발표래그가드·sc55, 2023-04~26-07)",
+    "note": "스마트머니 스코어 + 임상 AI 게이트(prob>=0.5, 3yr P2/3). public us DB, AS_OF 2026-07-02, 진입=07/02 시가. 전원 13G/13F_quiet(EDGAR 실시간). ※ SI publication-lag 가드 + score컷 55(검증 헤드라인 config에 정렬, 76.8% 백테스트 config). 발표 전 SI 미사용.",
     "tickers": [
       "CRMD",
       "CRVS",
+      "MLYS",
       "PEPG",
       "IRON",
       "PALI",
       "PRAX",
       "ANRO",
       "ALMS",
-      "CABA",
-      "KPTI"
+      "CABA"
     ]
   }
 }

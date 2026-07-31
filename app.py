@@ -431,6 +431,75 @@ def compute_satellite_sl(names, entry_date, sl):
     return rows, port_ret, pd.Series(daily).sort_index()
 
 
+@st.cache_data(ttl=300)
+def compute_core_monthend_sl(names, entry_date, sl):
+    """Month-end −15%-from-entry SL replay for a Core cohort (buy&hold between checks).
+
+    names: tuple of (ticker, entry_price, weight_mult). At each COMPLETED month's
+    last trading day, any holding whose close is <= entry*(1+sl) is stopped and its
+    capital moved to cash (no redistribution — Core rebalances quarterly, not
+    intra-quarter). Mirrors 26_core_v3_sl_overlay.py: ret measured from entry, checked
+    only at month-end (is_me). Returns (rows_by_ticker, port_ret%, daily_series) or
+    (None,..) if history is unavailable. Transaction cost is omitted (display only).
+    """
+    tickers = [n[0] for n in names]
+    entry = {n[0]: n[1] for n in names}
+    wm = {n[0]: n[2] for n in names}
+    C = {}
+    for tk in tickers:
+        try:
+            h = yf.Ticker(tk).history(start='2026-06-01', interval='1d', auto_adjust=False)
+            c = h['Close'].dropna()
+            if not c.empty:
+                C[tk] = c
+        except Exception:
+            pass
+    cl = pd.DataFrame(C).sort_index().ffill()
+    if cl.empty:
+        return None, None, None
+    tks = [t for t in tickers if t in cl.columns]
+    days = [d for d in cl.index if str(d.date()) >= entry_date]
+    if not days or not tks:
+        return None, None, None
+    # Check dates = last trade day of each COMPLETED month (exclude the ongoing month).
+    now = pd.Timestamp.now()
+    seen = {}
+    for d in days:
+        seen[(d.year, d.month)] = d
+    me_days = {d for (y, m), d in seen.items() if (now.year, now.month) > (y, m)}
+    tot = sum(wm[t] for t in tks)
+    val = {t: wm[t] / tot for t in tks}
+    alive = set(tks); cash = 0.0
+    status = {t: '보유' for t in tks}; exret = {}; expx = {}
+    daily = {}
+    for i, d in enumerate(days):
+        loc = cl.index.get_loc(d); pv = cl.index[loc - 1]
+        for t in list(alive):
+            base = entry[t] if i == 0 else cl.loc[pv, t]
+            m = (cl.loc[d, t] / base) if base > 0 else 1.0
+            if np.isfinite(m):
+                val[t] *= m
+        if d in me_days:
+            for t in list(alive):
+                if entry[t] > 0 and (cl.loc[d, t] - entry[t]) / entry[t] <= sl:
+                    cash += val[t]; val[t] = 0.0; alive.discard(t)
+                    status[t] = f"SL@{str(d.date())[5:]}"
+                    exret[t] = (cl.loc[d, t] - entry[t]) / entry[t] * 100
+                    expx[t] = float(cl.loc[d, t])
+        daily[d] = (sum(val.values()) + cash - 1) * 100
+    port_ret = (sum(val.values()) + cash - 1) * 100
+    last = cl.index[-1]
+    rows = {}
+    for t in tks:
+        if status[t] != '보유':
+            rows[t] = {'current': expx[t], 'ret': exret[t], 'status': status[t]}
+        else:
+            cur = float(cl.loc[last, t])
+            rows[t] = {'current': cur, 'ret': (cur - entry[t]) / entry[t] * 100,
+                       'status': '보유'}
+    return rows, port_ret, pd.Series(daily).sort_index()
+
+
 def render_satellite_v2(SAT):
     """Render the Satellite v2 (6/5) weighted portfolio with SL-30 discipline
     (weight_pct + prob + smart money). Falls back to live buy&hold if the daily
@@ -875,32 +944,45 @@ elif page == "🗓️ Core (6/30, v4)":
     PIT = PF.get('core_v2_pit_0630')
     if PIT:
         st.markdown(PIT['note'] + " · " + PIT['backtest_note'])
-        _tk = [p['ticker'] for p in PIT['portfolio']]
-        _pr = get_prices_batch(_tk)
-        _tm = sum(p['weight_mult'] for p in PIT['portfolio'])
-        _rows = []
-        for p in PIT['portfolio']:
-            cur = _pr.get(p['ticker'], p['entry'])
-            if cur <= 0: cur = p['entry']
-            alloc = PIT['seed_usd'] * p['weight_mult'] / _tm
-            qty = max(1, int(alloc / p['entry']))
-            cost = qty * p['entry']; val = qty * cur; pnl = val - cost
-            _rows.append({'Ticker': p['ticker'], 'Prob': p['prob'], 'Entry': p['entry'],
-                          'Current': cur, 'Value': val, 'PnL': pnl, 'PnL%': pnl/cost*100 if cost>0 else 0})
-        _df = pd.DataFrame(_rows)
-        _tc = _df['Value'].sum(); _tp = _df['PnL'].sum()
-        _tpp = _tp / (_tc - _tp) * 100 if (_tc - _tp) > 0 else 0
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Portfolio", f"{_tpp:+.2f}%")
-        c2.metric("Invested", f"${_tc:,.0f}")
-        c3.metric("Entry", PIT['entry_date'])
-        st.dataframe(_df.style.format({'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
-            'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'}).map(
-            lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
-                ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''), subset=['PnL', 'PnL%']),
-            width='stretch', hide_index=True)
-        _tqe = tuple((p['ticker'], max(1, int(PIT['seed_usd'] * p['weight_mult'] / _tm / p['entry'])), p['entry']) for p in PIT['portfolio'])
-        show_bench(_tpp, PIT['entry_date'], PIT['bench'], "Core (6/30, v4)", portfolio=_tqe)
+        sl = PIT.get('sl', -0.15)
+        meta = {p['ticker']: p for p in PIT['portfolio']}
+        names = tuple((p['ticker'], p['entry'], p['weight_mult']) for p in PIT['portfolio'])
+        rows, port_ret, daily_series = compute_core_monthend_sl(names, PIT['entry_date'], sl)
+
+        if rows is None:  # history unavailable → degrade to live buy&hold
+            prices = get_prices_batch(list(meta))
+            rows = {}
+            for tk, p in meta.items():
+                cur = prices.get(tk, p['entry'])
+                if cur <= 0: cur = p['entry']
+                rows[tk] = {'current': cur, 'ret': (cur - p['entry']) / p['entry'] * 100,
+                            'status': '보유'}
+            tw = sum(meta[tk]['weight_mult'] for tk in rows)
+            port_ret = sum(rows[tk]['ret'] * meta[tk]['weight_mult'] / tw for tk in rows) if tw else 0.0
+            daily_series = None
+            st.caption("⚠️ 일별 히스토리 로드 실패 — SL 미적용 buy&hold로 임시 표시")
+
+        held = [tk for tk in rows if rows[tk]['status'] == '보유']
+        stopped = [tk for tk in rows if rows[tk]['status'] != '보유']
+        seed = PIT['seed_usd']
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Portfolio", f"{port_ret:+.2f}%")
+        c2.metric("Invested", f"${seed:,.0f}")
+        c3.metric("손절 / 보유", f"{len(stopped)} / {len(held)}")
+        c4.metric("Entry", PIT['entry_date'])
+        if stopped:
+            parts = [f"{tk} {rows[tk]['ret']:+.1f}% ({rows[tk]['status']})" for tk in stopped]
+            st.warning(f"🛑 손절 진입가−{abs(int(sl*100))}% · 월말 체크 (현금화, 재분배 없음): " + " · ".join(parts))
+        if held:
+            _df = pd.DataFrame([{'Ticker': tk, 'Prob': meta[tk]['prob'], 'Entry': meta[tk]['entry'],
+                                 'Current': rows[tk]['current'], 'PnL%': rows[tk]['ret']} for tk in held])
+            st.dataframe(_df.style.format({'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
+                'PnL%': '{:+.1f}%'}).map(
+                lambda v: 'color:#2ecc71' if isinstance(v, (int, float)) and v > 0 else
+                    ('color:#e74c3c' if isinstance(v, (int, float)) and v < 0 else ''), subset=['PnL%']),
+                width='stretch', hide_index=True)
+        show_bench(port_ret, PIT['entry_date'], PIT['bench'], "Core (6/30, v4)",
+                   bera_daily_override=daily_series)
 
 
 # ═══ Page: 종목별 상세 (Per-stock Detail) ═══

@@ -937,6 +937,7 @@
     "engine": "Core v2 (PIT)",
     "entry_date": "2026-06-30",
     "seed_usd": 50000,
+    "sl": -0.15,
     "bench": {
       "IBB": 190.19
     },

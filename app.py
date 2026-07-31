@@ -358,40 +358,129 @@ def render_tracker_track(cfg, title, sub_caption, bench_label):
     show_bench(pr, cfg['entry_date'], cfg['bench'], bench_label, bera_daily_override=daily_series)
 
 
+@st.cache_data(ttl=300)
+def compute_satellite_sl(names, entry_date, sl):
+    """Daily close-based SL replay for the weighted Satellite v2 portfolio.
+
+    names: tuple of (ticker, entry_price, weight_pct). A position is stopped the
+    first day its close is <= entry*(1+sl); the loss is realized at that close and
+    the freed capital is redistributed to survivors in proportion to their current
+    value (relative weights preserved). This applies the same SL discipline the
+    Config H tracker tracks use — Satellite v2 was previously pure buy&hold.
+    Returns (rows_by_ticker, port_ret%, daily_series). Falls back to (None,..) on
+    missing history so the caller can degrade to live buy&hold.
+    """
+    tickers = [n[0] for n in names]
+    entry = {n[0]: n[1] for n in names}
+    w0 = {n[0]: n[2] for n in names}
+    C = {}
+    for tk in tickers:
+        try:
+            h = yf.Ticker(tk).history(start='2026-04-20', interval='1d', auto_adjust=False)
+            c = h['Close'].dropna()
+            if not c.empty:
+                C[tk] = c
+        except Exception:
+            pass
+    cl = pd.DataFrame(C).sort_index().ffill()
+    if cl.empty:
+        return None, None, None
+    tks = [t for t in tickers if t in cl.columns]
+    days = [d for d in cl.index if str(d.date()) >= entry_date]
+    if not days or not tks:
+        return None, None, None
+    tot_w = sum(w0[tk] for tk in tks)
+    val = {tk: w0[tk] / tot_w for tk in tks}   # fraction of deployed capital
+    alive = set(tks); cash = 0.0
+    status = {tk: '보유' for tk in tks}; exret = {}; expx = {}
+    daily = {}
+    for i, d in enumerate(days):
+        loc_d = cl.index.get_loc(d)
+        pv = cl.index[loc_d - 1]
+        for tk in list(alive):
+            base = entry[tk] if i == 0 else cl.loc[pv, tk]
+            m = (cl.loc[d, tk] / base) if base > 0 else 1.0
+            if np.isfinite(m):
+                val[tk] *= m
+        ex = [tk for tk in list(alive)
+              if entry[tk] > 0 and (cl.loc[d, tk] - entry[tk]) / entry[tk] <= sl]
+        if ex:
+            freed = sum(val[tk] for tk in ex)
+            for tk in ex:
+                alive.discard(tk); val[tk] = 0.0
+                status[tk] = f"SL@{str(d.date())[5:]}"
+                exret[tk] = (cl.loc[d, tk] - entry[tk]) / entry[tk] * 100
+                expx[tk] = float(cl.loc[d, tk])
+            surv_tot = sum(val[tk] for tk in alive)
+            if alive and surv_tot > 0:
+                for tk in alive:
+                    val[tk] += freed * val[tk] / surv_tot
+            else:
+                cash += freed
+        daily[d] = (sum(val.values()) + cash - 1) * 100
+    port_ret = (sum(val.values()) + cash - 1) * 100
+    last = cl.index[-1]
+    rows = {}
+    for tk in tks:
+        if status[tk] != '보유':
+            rows[tk] = {'current': expx[tk], 'ret': exret[tk], 'status': status[tk]}
+        else:
+            cur = float(cl.loc[last, tk])
+            rows[tk] = {'current': cur, 'ret': (cur - entry[tk]) / entry[tk] * 100,
+                        'status': '보유'}
+    return rows, port_ret, pd.Series(daily).sort_index()
+
+
 def render_satellite_v2(SAT):
-    """Render the Satellite v2 (6/5) weighted static portfolio (weight_pct + prob + smart money)."""
+    """Render the Satellite v2 (6/5) weighted portfolio with SL-30 discipline
+    (weight_pct + prob + smart money). Falls back to live buy&hold if the daily
+    history needed for the SL replay is unavailable."""
     st.markdown(SAT['entry_note'])
     st.markdown(SAT['backtest_note'])
-    tickers = [p['ticker'] for p in SAT['portfolio']]
-    prices = get_prices_batch(tickers)
-    rows = []
-    for p in SAT['portfolio']:
-        cur = prices.get(p['ticker'], p['entry'])
-        if cur <= 0: cur = p['entry']
-        alloc = SAT['seed_usd'] * p['weight_pct'] / 100
-        qty = int(alloc / p['entry'])
-        cost = qty * p['entry']; val = qty * cur; pnl = val - cost
-        rows.append({'Ticker': p['ticker'], 'Weight': f"{p['weight_pct']}%",
-                      'Prob': p['prob'], 'Entry': p['entry'], 'Current': cur,
-                      'Value': val, 'PnL': pnl, 'PnL%': pnl/cost*100 if cost>0 else 0,
-                      'Smart Money': p['smart_money']})
-    df = pd.DataFrame(rows)
-    tc = df['Value'].sum(); tp = df['PnL'].sum()
-    tpp = tp / (tc - tp) * 100 if (tc - tp) > 0 else 0
+    sl = SAT.get('sl', -0.30)
+    meta = {p['ticker']: p for p in SAT['portfolio']}
+    names = tuple((p['ticker'], p['entry'], p['weight_pct']) for p in SAT['portfolio'])
+    rows, port_ret, daily_series = compute_satellite_sl(names, SAT['entry_date'], sl)
+
+    if rows is None:  # history unavailable → degrade to live buy&hold
+        tickers = list(meta)
+        prices = get_prices_batch(tickers)
+        rows = {}
+        for tk, p in meta.items():
+            cur = prices.get(tk, p['entry'])
+            if cur <= 0: cur = p['entry']
+            rows[tk] = {'current': cur, 'ret': (cur - p['entry']) / p['entry'] * 100,
+                        'status': '보유'}
+        w = {tk: meta[tk]['weight_pct'] for tk in rows}
+        tw = sum(w.values())
+        port_ret = sum(rows[tk]['ret'] * w[tk] / tw for tk in rows) if tw else 0.0
+        daily_series = None
+        st.caption("⚠️ 일별 히스토리 로드 실패 — SL 미적용 buy&hold로 임시 표시")
+
+    held = [tk for tk in rows if rows[tk]['status'] == '보유']
+    stopped = [tk for tk in rows if rows[tk]['status'] != '보유']
+    seed = SAT['seed_usd']
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Active", f"{len(SAT['portfolio'])} / {SAT['max_slots']} slots")
-    c2.metric("Invested", f"${tc:,.0f}")
-    c3.metric("PnL", f"${tp:+,.0f}", delta=f"{tpp:+.2f}%")
-    c4.metric("Slots Available", f"{SAT['max_slots'] - len(SAT['portfolio'])}")
-    st.dataframe(df.style.format({
-        'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
-        'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'
-    }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
-                ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
-                subset=['PnL','PnL%']),
-        width='stretch', hide_index=True)
-    sat_tqe = tuple((p['ticker'], int(SAT['seed_usd'] * p['weight_pct'] / 100 / p['entry']), p['entry']) for p in SAT['portfolio'])
-    show_bench(tpp, SAT['entry_date'], SAT['bench'], "Satellite v2", portfolio=sat_tqe)
+    c1.metric("Active", f"{len(held)} / {SAT['max_slots']} slots")
+    c2.metric("Invested", f"${seed:,.0f}")
+    c3.metric("PnL", f"${seed * port_ret / 100:+,.0f}", delta=f"{port_ret:+.2f}%")
+    c4.metric("손절 / 보유", f"{len(stopped)} / {len(held)}")
+    if stopped:
+        parts = [f"{tk} {rows[tk]['ret']:+.1f}% ({rows[tk]['status']})" for tk in stopped]
+        st.warning(f"🛑 손절 SL{int(sl*100)}% (수익률에 반영·재분배됨): " + " · ".join(parts))
+    if held:
+        df = pd.DataFrame([{
+            'Ticker': tk, 'Weight': f"{meta[tk]['weight_pct']}%", 'Prob': meta[tk]['prob'],
+            'Entry': meta[tk]['entry'], 'Current': rows[tk]['current'], 'PnL%': rows[tk]['ret'],
+            'Smart Money': meta[tk]['smart_money']} for tk in held])
+        st.dataframe(df.style.format({
+            'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}', 'PnL%': '{:+.1f}%'
+        }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
+                    ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
+                    subset=['PnL%']),
+            width='stretch', hide_index=True)
+    show_bench(port_ret, SAT['entry_date'], SAT['bench'], "Satellite v2",
+               bera_daily_override=daily_series)
 
 
 # ═══ Satellite-family discovery tracks ═══

@@ -513,6 +513,7 @@
   "satellite": {
     "entry_date": "2026-06-05",
     "seed_usd": 10000,
+    "sl": -0.3,
     "bench": {
       "XBI": 128.67
     },

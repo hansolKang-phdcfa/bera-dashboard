@@ -897,44 +897,46 @@ elif page == "🚀 Core (7/17, v5)":
     st.markdown(CV2['backtest_note'])
     st.markdown("---")
 
-    tickers = [p['ticker'] for p in CV2['portfolio']]
-    prices = get_prices_batch(tickers)
+    sl = CV2.get('sl', -0.15)
+    meta = {p['ticker']: p for p in CV2['portfolio']}
     total_mult = sum(p['weight_mult'] for p in CV2['portfolio'])
+    names = tuple((p['ticker'], p['entry'], p['weight_mult']) for p in CV2['portfolio'])
+    rows, port_ret, daily_series = compute_core_monthend_sl(names, CV2['entry_date'], sl)
 
-    rows = []
-    for p in CV2['portfolio']:
-        cur = prices.get(p['ticker'], p['entry'])
-        if cur <= 0: cur = p['entry']
-        alloc = CV2['seed_usd'] * p['weight_mult'] / total_mult
-        qty = max(1, int(alloc / p['entry']))
-        cost = qty * p['entry']; val = qty * cur; pnl = val - cost
-        rows.append({'Ticker': p['ticker'],
-                      'Weight': f"{p['weight_mult']/total_mult*100:.1f}%",
-                      'Prob': p['prob'], 'Entry': p['entry'], 'Current': cur,
-                      'Value': val, 'PnL': pnl, 'PnL%': pnl/cost*100 if cost>0 else 0})
+    if rows is None:  # history unavailable → degrade to live buy&hold
+        prices = get_prices_batch(list(meta))
+        rows = {}
+        for tk, p in meta.items():
+            cur = prices.get(tk, p['entry'])
+            if cur <= 0: cur = p['entry']
+            rows[tk] = {'current': cur, 'ret': (cur - p['entry']) / p['entry'] * 100, 'status': '보유'}
+        port_ret = sum(rows[tk]['ret'] * meta[tk]['weight_mult'] / total_mult for tk in rows)
+        daily_series = None
+        st.caption("⚠️ 일별 히스토리 로드 실패 — SL 미적용 buy&hold로 임시 표시")
 
-    df = pd.DataFrame(rows)
-    tc = df['Value'].sum(); tp = df['PnL'].sum()
-    tpp = tp / (tc - tp) * 100 if (tc - tp) > 0 else 0
-
+    held = [tk for tk in rows if rows[tk]['status'] == '보유']
+    stopped = [tk for tk in rows if rows[tk]['status'] != '보유']
+    seed = CV2['seed_usd']
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Active", f"{len(CV2['portfolio'])} / {CV2['max_slots']} slots")
-    c2.metric("Invested", f"${tc:,.0f}")
-    c3.metric("PnL", f"${tp:+,.0f}", delta=f"{tpp:+.2f}%")
-    c4.metric("Slots Available", f"{CV2['max_slots'] - len(CV2['portfolio'])}")
-
-    st.dataframe(df.style.format({
-        'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}',
-        'Value': '${:,.0f}', 'PnL': '${:+,.0f}', 'PnL%': '{:+.1f}%'
-    }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
-                ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
-                subset=['PnL','PnL%']),
-        width='stretch', hide_index=True)
-
-    show_charts(df)
-    st.markdown("---")
-    cv2_tqe = tuple((p['ticker'], max(1, int(CV2['seed_usd'] * p['weight_mult'] / total_mult / p['entry'])), p['entry']) for p in CV2['portfolio'])
-    show_bench(tpp, CV2['entry_date'], CV2['bench'], "Core (7/17, v5)", portfolio=cv2_tqe)
+    c1.metric("Active", f"{len(held)} / {CV2['max_slots']} slots")
+    c2.metric("Invested", f"${seed:,.0f}")
+    c3.metric("PnL", f"${seed * port_ret / 100:+,.0f}", delta=f"{port_ret:+.2f}%")
+    c4.metric("손절 / 보유", f"{len(stopped)} / {len(held)}")
+    if stopped:
+        parts = [f"{tk} {rows[tk]['ret']:+.1f}% ({rows[tk]['status']})" for tk in stopped]
+        st.warning(f"🛑 손절 진입가−{abs(int(sl*100))}% · 월말 체크 (현금화, 재분배 없음): " + " · ".join(parts))
+    if held:
+        df = pd.DataFrame([{'Ticker': tk, 'Weight': f"{meta[tk]['weight_mult']/total_mult*100:.1f}%",
+                            'Prob': meta[tk]['prob'], 'Entry': meta[tk]['entry'],
+                            'Current': rows[tk]['current'], 'PnL%': rows[tk]['ret']} for tk in held])
+        st.dataframe(df.style.format({
+            'Prob': '{:.3f}', 'Entry': '${:.2f}', 'Current': '${:.2f}', 'PnL%': '{:+.1f}%'
+        }).map(lambda v: 'color:#2ecc71' if isinstance(v,(int,float)) and v>0 else
+                    ('color:#e74c3c' if isinstance(v,(int,float)) and v<0 else ''),
+                    subset=['PnL%']),
+            width='stretch', hide_index=True)
+    show_bench(port_ret, CV2['entry_date'], CV2['bench'], "Core (7/17, v5)",
+               bera_daily_override=daily_series)
 
 
 # ═══ Page: Core (6/30, v4) — 6/30 PIT 발굴 코호트 ═══

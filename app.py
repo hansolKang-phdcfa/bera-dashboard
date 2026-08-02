@@ -559,10 +559,11 @@ def render_satellite_v2(SAT):
 #   세대 숫자 = 전략 세대 (라이브 트랙이 어느 세대 룰로 발굴됐는지 표시)
 #   🔴1️⃣ = Market-only     (순수 스마트머니, 임상 미적용) — 그 전 세대
 #   🟡2️⃣ = Config H · v2   (스마트머니 + 임상 성공확률 게이트 + SL-30) — Config H 세대
-#   🟢3️⃣ = 신규룰 v3       ($2B 상한 + R&D≥$50M + T-bill 현금) — 2026-08-02 확정
+#   🟢3️⃣ = Config H 방어형  (R&D≥$50M 필터 + T-bill · 상한 없음) — base 대비 CAGR·Sharpe 양보·MDD 개선
+#   ※ 2026-08-02: $2B 상한은 PIT 백테서 return 드라이버를 잘라 해로움(-14pp) 확인 → 폐기.
 _SL_SUB = "진입 {entry} 시가 · {n}종목 동일가중 · SL-30/vol3x/drop-7%/hold120"
 _MKT_SUB = "진입 {entry} 시초가 · {n}종목 동일가중 · SL {sl}% + 재분배 · 순수 스마트머니(임상 미적용)"
-_V3_SUB = "진입 {entry} 시가 · {n}종목 동일가중 · SL-30/vol3x/hold120 · 신규룰($2B상한+R&D≥$50M) + 남는현금 T-bill"
+_V3_SUB = "진입 {entry} 시가 · {n}종목 동일가중 · SL-30/vol3x/hold120 · 방어형(R&D≥$50M 필터 + 남는현금 T-bill · 상한 없음)"
 SAT_TRACKS = [
     {'key': 'shared_tracker', 'label': '🔴1️⃣ Satellite (5/26)', 'ai': False, 'kind': 'tracker',
      'heading': '🔴1️⃣ 5/26 추천종목 (Scouter 15선 · Market-only)', 'sub': _MKT_SUB, 'bench_label': '5/26'},
@@ -585,10 +586,10 @@ SAT_TRACKS = [
      'heading': '🟡2️⃣ Config H (7/21 발굴 · 스마트머니+임상AI)', 'sub': _SL_SUB, 'bench_label': 'Config H 7/21'},
     {'key': 'config_h_0728', 'label': '🟡2️⃣ Satellite (7/28)', 'ai': True, 'kind': 'tracker',
      'heading': '🟡2️⃣ Config H (7/28 재발굴 · 스마트머니+임상AI)', 'sub': _SL_SUB, 'bench_label': 'Config H 7/28'},
-    {'key': 'satellite_v3_0721', 'label': '🟢3️⃣ Satellite (7/21 신규룰)', 'ai': True, 'kind': 'tracker',
-     'heading': '🟢3️⃣ Satellite v3 (7/21 발굴 · 신규룰: $2B상한 + R&D≥$50M + T-bill)', 'sub': _V3_SUB, 'bench_label': 'v3 7/21'},
-    {'key': 'satellite_v3_0728', 'label': '🟢3️⃣ Satellite (7/28 신규룰)', 'ai': True, 'kind': 'tracker',
-     'heading': '🟢3️⃣ Satellite v3 (7/28 발굴 · 신규룰: $2B상한 + R&D≥$50M + T-bill)', 'sub': _V3_SUB, 'bench_label': 'v3 7/28'},
+    {'key': 'satellite_v3_0721', 'label': '🟢3️⃣ Satellite (7/21 방어형)', 'ai': True, 'kind': 'tracker',
+     'heading': '🟢3️⃣ Config H 방어형 (7/21 · R&D≥$50M + T-bill · 상한 없음)', 'sub': _V3_SUB, 'bench_label': '방어형 7/21'},
+    {'key': 'satellite_v3_0728', 'label': '🟢3️⃣ Satellite (7/28 방어형)', 'ai': True, 'kind': 'tracker',
+     'heading': '🟢3️⃣ Config H 방어형 (7/28 · R&D≥$50M + T-bill · 상한 없음)', 'sub': _V3_SUB, 'bench_label': '방어형 7/28'},
 ]
 # Only keep tracks whose data is actually present in portfolios.json.
 SAT_TRACKS = [t for t in SAT_TRACKS if t['key'] in PF]
@@ -638,7 +639,7 @@ for label in OVERVIEW_PAGES:
 # 같은 Satellite지만 임상 AI 유무가 달라 섞어 놓으면 혼동됨. 각 그룹 내 날짜순.
 st.sidebar.markdown("**🟢 Satellite 계열**")
 st.sidebar.caption("소형주 포함 · 이벤트드리븐 · vs XBI")
-st.sidebar.caption("With BERA AI · 🟡2️⃣ Config H(스마트머니+임상) · 🟢3️⃣ 신규룰($2B상한+R&D+T-bill)")
+st.sidebar.caption("With BERA AI · 🟡2️⃣ Config H(공격·스마트머니+임상) · 🟢3️⃣ 방어형(R&D필터+T-bill·MDD↓)")
 for t in SAT_TRACKS:
     if t['ai']:
         _nav_button(t['label'])

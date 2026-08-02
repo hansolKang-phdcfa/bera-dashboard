@@ -1144,7 +1144,7 @@
     ]
   },
   "satellite_v3_0721": {
-    "engine": "Satellite v3 (신규룰: $2B 상한 + R&D≥$50M + T-bill 현금)",
+    "engine": "Config H + R&D≥$50M 방어형 (상한 없음 · 남는현금 T-bill)",
     "entry_date": "2026-07-21",
     "sl": -0.3,
     "vol_mult": 3.0,
@@ -1153,23 +1153,23 @@
     "bench": {
       "XBI": 151.02
     },
-    "backtest_note": "Backtest: CAGR 86.5%, Sharpe 2.19, MDD -36.5% (Satellite v3 · $2B상한+R&D$50M+T-bill · PIT sc55, 2023-04~26-07)",
-    "note": "신규룰 = Config H(스마트머니+임상 prob>=0.5) 위에 ①시총 $2B 상한(대형주 슬롯낭비 제거) ②R&D TTM>=$50M(저R&D 껍데기 제외) ③남는 현금 T-bill. AS_OF 2026-07-21, 진입=07/21 시가. Config H(2세대) 대비 NKTR/CRVS/PTCT 등 상한·R&D 탈락, ANNX/MGNX/CCCC/KPTI 편입.",
+    "backtest_note": "Backtest: CAGR 82.9%, Sharpe 2.12, MDD -33.7% (Config H + R&D$50M + T-bill 방어형 · PIT sc55, 2023-04~26-07). base Config H(86.0/2.16/-44.9) 대비 CAGR·Sharpe 소폭 양보하고 MDD 11%p 개선.",
+    "note": "방어형 = Config H(스마트머니+임상 prob>=0.5)에 R&D TTM>=$50M 필터(저R&D 껍데기 제외) + 남는현금 T-bill. 시총 상한 없음(상한은 PIT 백테서 return 드라이버를 잘라 -14pp라 폐기). AS_OF 2026-07-21, 진입=07/21 시가. base Config H 대비 CRMD/CRVS(저R&D) 빠지고 PRAX/ANNX 편입, 대형주(NKTR/PTCT/IRON) 유지.",
     "tickers": [
       "JBIO",
+      "NKTR",
       "DSGN",
+      "PTCT",
       "ALXO",
       "MAZE",
       "KURA",
-      "ANNX",
-      "MGNX",
-      "CCCC",
-      "KPTI",
-      "OCUL"
+      "IRON",
+      "PRAX",
+      "ANNX"
     ]
   },
   "satellite_v3_0728": {
-    "engine": "Satellite v3 (신규룰: $2B 상한 + R&D≥$50M + T-bill 현금)",
+    "engine": "Config H + R&D≥$50M 방어형 (상한 없음 · 남는현금 T-bill)",
     "entry_date": "2026-07-28",
     "sl": -0.3,
     "vol_mult": 3.0,
@@ -1178,19 +1178,19 @@
     "bench": {
       "XBI": 150.5
     },
-    "backtest_note": "Backtest: CAGR 86.5%, Sharpe 2.19, MDD -36.5% (Satellite v3 · $2B상한+R&D$50M+T-bill · PIT sc55, 2023-04~26-07)",
-    "note": "신규룰 = Config H(스마트머니+임상 prob>=0.5) 위에 ①시총 $2B 상한 ②R&D TTM>=$50M ③남는 현금 T-bill. AS_OF 2026-07-28, 진입=07/28 시가. Config H(2세대) 대비 NKTR/PTCT/IRON(상한)·CRVS/PALI(R&D) 탈락, ANNX/MGNX/OCUL/AURA/MLTX 편입.",
+    "backtest_note": "Backtest: CAGR 82.9%, Sharpe 2.12, MDD -33.7% (Config H + R&D$50M + T-bill 방어형 · PIT sc55, 2023-04~26-07). base Config H(86.0/2.16/-44.9) 대비 CAGR·Sharpe 소폭 양보하고 MDD 11%p 개선.",
+    "note": "방어형 = Config H(스마트머니+임상 prob>=0.5)에 R&D TTM>=$50M 필터 + 남는현금 T-bill. 시총 상한 없음. AS_OF 2026-07-28, 진입=07/28 시가. base Config H 대비 CRVS/PALI(저R&D) 빠지고 KOD/ANNX 편입, 대형주(NKTR/PTCT/IRON) 유지.",
     "tickers": [
       "JBIO",
+      "NKTR",
       "DSGN",
+      "PTCT",
       "ALXO",
       "MAZE",
       "KURA",
-      "ANNX",
-      "MGNX",
-      "OCUL",
-      "AURA",
-      "MLTX"
+      "IRON",
+      "KOD",
+      "ANNX"
     ]
   }
 }

@@ -28,6 +28,30 @@ CV2 = PF['core_v2_0717']
 
 # ═══ Helpers ═══
 
+def _patch_last_live(cl):
+    """Fill the latest bar's NaN closes with the live quote.
+
+    Yahoo's daily history endpoint lags ~1 session for many tickers — the newest
+    row comes back with NaN OHLC but real Volume until it settles. Benchmarks
+    (get_bench_data) and Core v1–v3 (get_portfolio_daily) already patch this with
+    fast_info.lastPrice; the Satellite / Core-monthend curve builders did not, so
+    their equity curves and holding tables stalled a session behind the XBI/IBB
+    line. Patching here keeps every track as fresh as the benchmark.
+    """
+    if cl is None or cl.empty:
+        return cl
+    last = cl.index[-1]
+    for tk in cl.columns:
+        v = cl.loc[last, tk]
+        if pd.isna(v) or v <= 0:
+            try:
+                lp = float(yf.Ticker(tk).fast_info.get('lastPrice', 0) or 0)
+                if lp > 0:
+                    cl.loc[last, tk] = lp
+            except Exception:
+                pass
+    return cl
+
 @st.cache_data(ttl=300)
 def get_prices_batch(tickers):
     """Fetch live intraday prices via fast_info.lastPrice (true current price).
@@ -255,12 +279,17 @@ def compute_shared_tracker(tickers, entry_date, sl, vol_mult, drop_th, hold):
     for tk in list(tickers) + ['XBI']:
         try:
             h = yf.Ticker(tk).history(start='2026-04-20', interval='1d', auto_adjust=True)
-            h = h[['Open', 'Close', 'Volume']].dropna()
+            h = h[['Open', 'Close', 'Volume']]
+            # Keep Yahoo's latest daily bar even when unsettled (NaN OHLC but real
+            # Volume) so the curve reaches today; its close is live-patched below.
+            # dropna() here would delete that row and stall the curve ~1 session
+            # behind the benchmark line (which get_bench_data already patches).
+            h = h[h['Close'].notna() | h['Volume'].notna()]
             if not h.empty:
                 O[tk], C[tk], V[tk] = h['Open'], h['Close'], h['Volume']
         except Exception:
             pass
-    cl = pd.DataFrame(C).sort_index().ffill()
+    cl = _patch_last_live(pd.DataFrame(C).sort_index()).ffill()
     if cl.empty:
         return None, [], None, 0
     op = pd.DataFrame(O).reindex(cl.index).ffill()
@@ -377,12 +406,12 @@ def compute_satellite_sl(names, entry_date, sl):
     for tk in tickers:
         try:
             h = yf.Ticker(tk).history(start='2026-04-20', interval='1d', auto_adjust=False)
-            c = h['Close'].dropna()
-            if not c.empty:
+            c = h['Close']  # keep the unsettled latest bar (NaN close, patched below)
+            if c.notna().any():
                 C[tk] = c
         except Exception:
             pass
-    cl = pd.DataFrame(C).sort_index().ffill()
+    cl = _patch_last_live(pd.DataFrame(C).sort_index()).ffill()
     if cl.empty:
         return None, None, None
     tks = [t for t in tickers if t in cl.columns]
@@ -449,12 +478,12 @@ def compute_core_monthend_sl(names, entry_date, sl):
     for tk in tickers:
         try:
             h = yf.Ticker(tk).history(start='2026-06-01', interval='1d', auto_adjust=False)
-            c = h['Close'].dropna()
-            if not c.empty:
+            c = h['Close']  # keep the unsettled latest bar (NaN close, patched below)
+            if c.notna().any():
                 C[tk] = c
         except Exception:
             pass
-    cl = pd.DataFrame(C).sort_index().ffill()
+    cl = _patch_last_live(pd.DataFrame(C).sort_index()).ffill()
     if cl.empty:
         return None, None, None
     tks = [t for t in tickers if t in cl.columns]
@@ -675,7 +704,7 @@ page = st.session_state.page
 st.sidebar.markdown("---")
 if st.sidebar.button("Refresh"):
     st.cache_data.clear()
-st.sidebar.caption("Updated: 2026-07-30")
+st.sidebar.caption("Updated: 2026-08-04")
 
 
 # ═══ Page: Core Live ═══

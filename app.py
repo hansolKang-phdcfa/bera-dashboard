@@ -29,27 +29,45 @@ CV2 = PF['core_v2_0717']
 # ═══ Helpers ═══
 
 def _patch_last_live(cl):
-    """Fill the latest bar's NaN closes with the live quote.
+    """Make the close matrix reach today's live quote. Two separate lags:
 
-    Yahoo's daily history endpoint lags ~1 session for many tickers — the newest
-    row comes back with NaN OHLC but real Volume until it settles. Benchmarks
-    (get_bench_data) and Core v1–v3 (get_portfolio_daily) already patch this with
-    fast_info.lastPrice; the Satellite / Core-monthend curve builders did not, so
-    their equity curves and holding tables stalled a session behind the XBI/IBB
-    line. Patching here keeps every track as fresh as the benchmark.
+    (1) Yahoo's newest daily row can come back with NaN OHLC but real Volume
+        until it settles → fill that row's NaN closes with fast_info.lastPrice.
+    (2) Before the US open (= Korean daytime/evening) Yahoo has **no row for
+        today at all**, so there is nothing to patch and the curve stops on the
+        prior session. get_bench_data already *appends* today's point from
+        lastPrice (`normed.loc[today] = ...`), so XBI/IBB reached today while
+        every portfolio curve sat a session behind — the visible asymmetry.
+        Append the same row here so both lines end on the same x.
+
+    Tickers with no live quote stay NaN and the callers' .ffill() carries the
+    prior close forward. 'today' is normalized in the index's own (exchange) tz,
+    matching get_bench_data, so a Korean morning (= prior US evening) correctly
+    appends nothing.
     """
     if cl is None or cl.empty:
         return cl
+
+    def _live(tk):
+        try:
+            lp = float(yf.Ticker(tk).fast_info.get('lastPrice', 0) or 0)
+            return lp if lp > 0 else None
+        except Exception:
+            return None
+
     last = cl.index[-1]
+    today = pd.Timestamp.now(tz=cl.index.tz).normalize()
+    if today > last.normalize():
+        row = {tk: _live(tk) for tk in cl.columns}
+        if any(v for v in row.values()):
+            cl.loc[today] = [row.get(tk) for tk in cl.columns]
+        return cl
     for tk in cl.columns:
         v = cl.loc[last, tk]
         if pd.isna(v) or v <= 0:
-            try:
-                lp = float(yf.Ticker(tk).fast_info.get('lastPrice', 0) or 0)
-                if lp > 0:
-                    cl.loc[last, tk] = lp
-            except Exception:
-                pass
+            lp = _live(tk)
+            if lp:
+                cl.loc[last, tk] = lp
     return cl
 
 @st.cache_data(ttl=300)
@@ -289,11 +307,18 @@ def compute_shared_tracker(tickers, entry_date, sl, vol_mult, drop_th, hold):
                 O[tk], C[tk], V[tk] = h['Open'], h['Close'], h['Volume']
         except Exception:
             pass
-    cl = _patch_last_live(pd.DataFrame(C).sort_index()).ffill()
+    raw = pd.DataFrame(C).sort_index()
+    raw_idx = raw.index
+    cl = _patch_last_live(raw).ffill()
     if cl.empty:
         return None, [], None, 0
     op = pd.DataFrame(O).reindex(cl.index).ffill()
     vol = pd.DataFrame(V).reindex(cl.index).ffill()
+    # A live row appended by _patch_last_live carries no volume of its own; the
+    # ffill'd previous-day volume would read as a fresh spike and could fire a
+    # spurious vol-exit. Zero it — only SL / time-stop may act on that bar.
+    for d in cl.index.difference(raw_idx):
+        vol.loc[d] = 0.0
     tks = [t for t in tickers if t in cl.columns]
     days = [d for d in cl.index if str(d.date()) >= entry_date]
     if not days or not tks:
